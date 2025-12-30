@@ -87,7 +87,7 @@ const handleSubmit = () => {
 
           <div class="checkbox-item">
             <Checkbox v-model="isPensioner" :binary="true" inputId="isPensioner" />
-            <label for="isPensioner">Pensionär (65+ år)</label>
+            <label for="isPensioner">Pensionär</label>
           </div>
         </div>
 

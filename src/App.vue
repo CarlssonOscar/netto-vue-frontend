@@ -22,7 +22,7 @@ import Toolbar from 'primevue/toolbar'
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #1a1a1a;
+  background: #f5f5f5;
 }
 
 header {
@@ -34,8 +34,8 @@ header {
 .app-toolbar {
   border-radius: 0;
   border: none;
-  background: #252525;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 main {

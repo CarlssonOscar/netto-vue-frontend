@@ -1,36 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import Menubar from 'primevue/menubar'
-import type { MenuItem } from 'primevue/menuitem'
-
-const router = useRouter()
-
-const items = ref<MenuItem[]>([
-  {
-    label: 'Home',
-    icon: 'pi pi-home',
-    command: () => router.push('/'),
-  },
-  {
-    label: 'About',
-    icon: 'pi pi-info-circle',
-    command: () => router.push('/about'),
-  },
-])
+import Toolbar from 'primevue/toolbar'
 </script>
 
 <template>
   <div id="app">
     <header>
-      <Menubar :model="items">
+      <Toolbar class="app-toolbar">
         <template #start>
-          <div class="app-logo">
-            <i class="pi pi-bolt" style="font-size: 1.5rem; color: var(--primary-color)"></i>
-            <span class="app-title">Netto Vue Frontend</span>
-          </div>
+          <span class="app-title">Netto</span>
         </template>
-      </Menubar>
+      </Toolbar>
     </header>
     <main>
       <router-view />
@@ -43,6 +22,7 @@ const items = ref<MenuItem[]>([
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: #1a1a1a;
 }
 
 header {
@@ -51,21 +31,21 @@ header {
   z-index: 1000;
 }
 
-main {
-  flex: 1;
-  padding: 1rem;
+.app-toolbar {
+  border-radius: 0;
+  border: none;
+  background: #252525;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
-.app-logo {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+main {
+  flex: 1;
 }
 
 .app-title {
-  font-size: 1.25rem;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.75rem;
   font-weight: 600;
-  color: var(--text-color);
+  color: #eb8b10;
 }
 </style>

@@ -9,9 +9,6 @@ import App from './App.vue'
 import 'primeicons/primeicons.css'
 import './style.css'
 
-// Enable dark mode
-document.documentElement.classList.add('dark-mode')
-
 // Custom theme with brand colors
 const NettoTheme = definePreset(Aura, {
   semantic: {
@@ -39,7 +36,7 @@ app.use(PrimeVue, {
   theme: {
     preset: NettoTheme,
     options: {
-      darkModeSelector: '.dark-mode',
+      darkModeSelector: false,
     },
   },
 })

@@ -1,32 +1,47 @@
 <script setup lang="ts">
-import { watch } from 'vue'
-import Select from 'primevue/select'
+import { ref, computed, watch } from 'vue'
+import AutoComplete from 'primevue/autocomplete'
 import { useMunicipalityStore } from '@/stores/municipalityStore'
+import type { Region } from '@/types/tax'
 
 const modelValue = defineModel<string | null>({ default: null })
 
 const store = useMunicipalityStore()
+const selectedRegion = ref<Region | null>(null)
+const filteredSuggestions = ref<Region[]>([])
 
 // Sync with store
 watch(
-  modelValue,
+  () => selectedRegion.value,
   (newValue) => {
-    store.setSelectedRegion(newValue)
-  },
-  { immediate: true }
+    const id = newValue?.id ?? null
+    modelValue.value = id
+    store.setSelectedRegion(id)
+  }
 )
+
+const search = (event: { query: string }) => {
+  const query = event.query.toLowerCase()
+  filteredSuggestions.value = store.regions.filter(r =>
+    r.name.toLowerCase().includes(query)
+  )
+}
+
+const onClear = () => {
+  modelValue.value = null
+  store.setSelectedRegion(null)
+}
 </script>
 
 <template>
-  <Select
-    v-model="modelValue"
-    :options="store.regions"
+  <AutoComplete
+    v-model="selectedRegion"
+    :suggestions="filteredSuggestions"
     optionLabel="name"
-    optionValue="id"
     placeholder="Alla regioner"
-    showClear
-    filter
-    filterPlaceholder="Sök region..."
+    @complete="search"
+    @clear="onClear"
+    dropdown
     class="w-full"
   />
 </template>

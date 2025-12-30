@@ -85,7 +85,7 @@ const formatPercent = (value: number | undefined) => {
             </div>
             <div class="checkbox-item">
               <Checkbox v-model="isPensioner" :binary="true" inputId="isPensioner" />
-              <label for="isPensioner">Pensionär (65+ år)</label>
+              <label for="isPensioner">Pensionär</label>
             </div>
           </div>
 
@@ -216,36 +216,87 @@ const formatPercent = (value: number | undefined) => {
 }
 
 .calc-card {
-  width: 375px;
-  height: 375px;
+  width: 380px;
+  height: 380px;
   flex-shrink: 0;
   border-radius: 20px !important;
-  background: #252525;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
 .calc-card :deep(.p-card) {
   border-radius: 20px;
   overflow: hidden;
-  background: #252525;
+  background: #ffffff;
 }
 
 .calc-card :deep(.p-card-body) {
   height: 100%;
-  background: #252525;
+  background: #ffffff;
   padding: 1.5rem 2rem;
   border-radius: 20px;
 }
 
 .calc-card :deep(.p-card-title) {
   font-size: 1.25rem;
-  color: #f5f5f5;
-  margin-bottom: 0.5rem;
+  color: #333333;
+  margin-bottom: 1rem;
 }
 
 .calc-card :deep(.p-card-content) {
-  color: #f5f5f5;
+  color: #333333;
+}
+
+/* Underline style for inputs */
+.form-content :deep(.p-inputtext),
+.form-content :deep(.p-select),
+.form-content :deep(.p-autocomplete-input) {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 0;
+  padding: 0.5rem 0;
+  color: #333333;
+}
+
+.form-content :deep(.p-autocomplete) {
+  background: transparent;
+}
+
+.form-content :deep(.p-autocomplete-dropdown) {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+.form-content :deep(.p-autocomplete-dropdown .p-icon) {
+  transition: transform 0.3s ease;
+}
+
+.form-content :deep(.p-autocomplete-dropdown[aria-expanded='true'] .p-icon) {
+  transform: rotate(180deg);
+}
+
+.form-content :deep(.p-autocomplete-dropdown:not(:disabled):active),
+.form-content :deep(.p-autocomplete-dropdown:not(:disabled):hover),
+.form-content :deep(.p-autocomplete-dropdown:not(:disabled):focus) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.form-content :deep(.p-autocomplete-input-multiple),
+.form-content :deep(.p-autocomplete > .p-inputtext) {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.form-content :deep(.p-inputtext:hover),
+.form-content :deep(.p-select:hover),
+.form-content :deep(.p-autocomplete:hover .p-inputtext) {
+  border-bottom-color: rgba(0, 0, 0, 0.4);
 }
 
 .form-content {
@@ -268,7 +319,7 @@ const formatPercent = (value: number | undefined) => {
 }
 
 .checkbox-item label {
-  color: rgba(245, 245, 245, 0.7);
+  color: rgba(0, 0, 0, 0.6);
   cursor: pointer;
   font-size: 0.9rem;
 }
@@ -276,18 +327,18 @@ const formatPercent = (value: number | undefined) => {
 .submit-btn {
   margin-top: 0.5rem;
   align-self: center;
-  background: #eb8b10 !important;
-  border-color: #eb8b10 !important;
+  background: #f5b800 !important;
+  border-color: #f5b800 !important;
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #d47d0e !important;
-  border-color: #d47d0e !important;
+  background: #daa600 !important;
+  border-color: #daa600 !important;
 }
 
 .submit-btn:disabled {
-  background: #eb8b10 !important;
-  border-color: #eb8b10 !important;
+  background: #f5b800 !important;
+  border-color: #f5b800 !important;
   opacity: 0.9;
 }
 
@@ -308,16 +359,16 @@ const formatPercent = (value: number | undefined) => {
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 0;
-  border-bottom: 2px solid #eb8b10;
+  border-bottom: 2px solid #f5b800;
   margin-bottom: 0.25rem;
-  color: #eb8b10;
+  color: #f5b800;
   opacity: 1;
 }
 
 .highlight-value {
   font-size: 1.2rem;
   font-weight: 700;
-  color: #eb8b10;
+  color: #f5b800;
 }
 
 .result-row {
@@ -329,7 +380,7 @@ const formatPercent = (value: number | undefined) => {
 }
 
 .result-row span:first-child {
-  color: rgba(245, 245, 245, 0.7);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .result-row span:last-child {

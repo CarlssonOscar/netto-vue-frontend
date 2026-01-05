@@ -137,7 +137,7 @@ const formatName = (name: string): string => {
           <MunicipalitySelect 
             v-model="municipalityId" 
             :region-id="selectedRegionId"
-            :placeholder="submitted && validationErrors.municipality ? 'Sök kommun... - obligatoriskt fält' : 'Sök kommun...'"
+            :placeholder="submitted && validationErrors.municipality ? 'Sök kommun *' : 'Sök kommun...'"
             :class="{ 'p-invalid': submitted && validationErrors.municipality }"
             :disabled="!!result"
             aria-label="Välj kommun"
@@ -147,7 +147,7 @@ const formatName = (name: string): string => {
             v-model="grossMonthlySalary"
             :min="0"
             :max="10000000"
-            :placeholder="submitted && validationErrors.salary ? 'Bruttolön per månad (SEK) - obligatoriskt fält' : 'Bruttolön per månad (SEK)'"
+            :placeholder="submitted && validationErrors.salary ? 'Bruttolön (SEK) *' : 'Bruttolön per månad (SEK)'"
             class="w-full"
             locale="sv-SE"
             :maxFractionDigits="0"
@@ -185,7 +185,7 @@ const formatName = (name: string): string => {
               <MunicipalitySelect 
                 v-model="compareMunicipalityId" 
                 :region-id="compareRegionId"
-                :placeholder="submitted && validationErrors.compareMunicipality ? 'Sök kommun... - obligatoriskt fält' : 'Sök kommun...'"
+                :placeholder="submitted && validationErrors.compareMunicipality ? 'Sök kommun *' : 'Sök kommun...'"
                 :class="{ 'p-invalid': submitted && validationErrors.compareMunicipality }"
                 :disabled="!!result"
                 aria-label="Välj kommun för jämförelse"

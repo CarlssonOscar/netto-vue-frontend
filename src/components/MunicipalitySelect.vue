@@ -8,6 +8,9 @@ const modelValue = defineModel<string>({ required: true })
 
 const props = defineProps<{
   regionId?: string | null
+  placeholder?: string
+  disabled?: boolean
+  ariaLabel?: string
 }>()
 
 const store = useMunicipalityStore()
@@ -53,6 +56,15 @@ const onClear = () => {
   modelValue.value = ''
 }
 
+// Formatera kommunnamn till title case (första bokstaven stor, resten små)
+const formatName = (name: string): string => {
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 onMounted(() => {
   store.fetchMunicipalities()
 })
@@ -62,8 +74,8 @@ onMounted(() => {
   <AutoComplete
     v-model="selectedMunicipality"
     :suggestions="filteredSuggestions"
-    optionLabel="name"
-    placeholder="Sök kommun..."
+    :optionLabel="(m: Municipality) => formatName(m.name)"
+    :placeholder="props.placeholder ?? 'Sök kommun...'"
     :loading="store.loading"
     @complete="search"
     @item-select="onSelect"
@@ -71,5 +83,7 @@ onMounted(() => {
     dropdown
     forceSelection
     class="w-full"
+    :disabled="props.disabled"
+    :aria-label="props.ariaLabel"
   />
 </template>

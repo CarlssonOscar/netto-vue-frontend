@@ -5,13 +5,12 @@ import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Message from 'primevue/message'
-import SelectButton from 'primevue/selectbutton'
+import Divider from 'primevue/divider'
 import RegionSelect from './RegionSelect.vue'
 import MunicipalitySelect from './MunicipalitySelect.vue'
 import { useTaxCalculation } from '@/composables/useTaxCalculation'
-import type { TaxRequest } from '@/types/tax'
 
-const { result, loading, error, calculate } = useTaxCalculation()
+const { result, loading, error, calculate, reset } = useTaxCalculation()
 
 const selectedRegionId = ref<string | null>(null)
 const municipalityId = ref('')
@@ -19,17 +18,35 @@ const grossMonthlySalary = ref<number | null>(null)
 const churchMember = ref(false)
 const isPensioner = ref(false)
 
+// Spårar om användaren har försökt skicka formuläret
+const submitted = ref(false)
+
 const viewOptions = [
   { label: 'Månad', value: 'month' },
   { label: 'År', value: 'year' }
 ]
 const selectedViews = ref(['month', 'year'])
 
+// Valideringsmeddelanden
+const validationErrors = computed(() => ({
+  municipality: !municipalityId.value ? 'Obligatoriskt fält' : null,
+  salary: !grossMonthlySalary.value || grossMonthlySalary.value <= 0 
+    ? 'Obligatoriskt fält' 
+    : null
+}))
+
 const isValid = computed(() => {
   return municipalityId.value && grossMonthlySalary.value && grossMonthlySalary.value > 0
 })
 
+const handleReset = () => {
+  reset()
+  submitted.value = false
+}
+
 const handleSubmit = () => {
+  submitted.value = true
+  
   if (!isValid.value || !grossMonthlySalary.value) return
 
   calculate({
@@ -64,27 +81,41 @@ const formatPercent = (value: number | undefined) => {
       <template #title>Beräkna nettolön</template>
       <template #content>
         <form @submit.prevent="handleSubmit" class="form-content">
-          <RegionSelect v-model="selectedRegionId" />
+          <RegionSelect 
+            v-model="selectedRegionId" 
+            :disabled="!!result"
+            aria-label="Välj region"
+          />
 
-          <MunicipalitySelect v-model="municipalityId" :region-id="selectedRegionId" />
+          <MunicipalitySelect 
+            v-model="municipalityId" 
+            :region-id="selectedRegionId"
+            :placeholder="submitted && validationErrors.municipality ? 'Sök kommun... - obligatoriskt fält' : 'Sök kommun...'"
+            :class="{ 'p-invalid': submitted && validationErrors.municipality }"
+            :disabled="!!result"
+            aria-label="Välj kommun"
+          />
 
           <InputNumber
             v-model="grossMonthlySalary"
             :min="0"
             :max="10000000"
-            placeholder="Bruttolön per månad (SEK)"
+            :placeholder="submitted && validationErrors.salary ? 'Bruttolön per månad (SEK) - obligatoriskt fält' : 'Bruttolön per månad (SEK)'"
             class="w-full"
             locale="sv-SE"
             :maxFractionDigits="0"
+            :class="{ 'p-invalid': submitted && validationErrors.salary }"
+            :disabled="!!result"
+            aria-label="Bruttolön per månad i svenska kronor"
           />
 
           <div class="checkbox-group">
             <div class="checkbox-item">
-              <Checkbox v-model="churchMember" :binary="true" inputId="churchMember" />
+              <Checkbox v-model="churchMember" :binary="true" inputId="churchMember" :disabled="!!result" />
               <label for="churchMember">Medlem i Svenska kyrkan</label>
             </div>
             <div class="checkbox-item">
-              <Checkbox v-model="isPensioner" :binary="true" inputId="isPensioner" />
+              <Checkbox v-model="isPensioner" :binary="true" inputId="isPensioner" :disabled="!!result" />
               <label for="isPensioner">Pensionär</label>
             </div>
           </div>
@@ -92,10 +123,17 @@ const formatPercent = (value: number | undefined) => {
           <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
 
           <Button
+            v-if="!result"
             type="submit"
             label="Beräkna nettolön"
             :loading="loading"
-            :disabled="!isValid"
+            :class="['submit-btn', { 'submit-btn-disabled': !isValid }]"
+          />
+          <Button
+            v-else
+            type="button"
+            label="Beräkna ny nettolön"
+            @click="handleReset"
             class="submit-btn"
           />
         </form>
@@ -112,7 +150,6 @@ const formatPercent = (value: number | undefined) => {
               <span>Nettolön</span>
               <span class="highlight-value">{{ formatCurrency(result.netMonthlySalary) }} kr</span>
             </div>
-            <Divider />
             <div class="result-row">
               <span>Bruttolön</span>
               <span>{{ formatCurrency(result.grossMonthlySalary) }} kr</span>
@@ -158,7 +195,6 @@ const formatPercent = (value: number | undefined) => {
               <span>Nettolön</span>
               <span class="highlight-value">{{ formatCurrency(result.grossYearlySalary - result.yearlyTotalTax) }} kr</span>
             </div>
-            <Divider />
             <div class="result-row">
               <span>Bruttolön</span>
               <span>{{ formatCurrency(result.grossYearlySalary) }} kr</span>
@@ -216,8 +252,8 @@ const formatPercent = (value: number | undefined) => {
 }
 
 .calc-card {
-  width: 380px;
-  height: 380px;
+  width: 410px;
+  height: 410px;
   flex-shrink: 0;
   border-radius: 20px !important;
   background: #ffffff;
@@ -258,6 +294,55 @@ const formatPercent = (value: number | undefined) => {
   border-radius: 0;
   padding: 0.5rem 0;
   color: #333333;
+}
+
+/* Ta bort blå bakgrund på InputNumber vid fokus */
+.form-content :deep(.p-inputnumber-input) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.form-content :deep(.p-inputnumber-input:enabled:focus) {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.form-content :deep(.p-inputnumber-input:enabled:hover) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.form-content :deep(.p-inputnumber-input:focus) {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.form-content :deep(.p-inputnumber-input:hover) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.form-content :deep(.p-inputnumber) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.form-content :deep(.p-inputnumber .p-inputtext) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.form-content :deep(.p-inputnumber .p-inputtext:focus) {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.form-content :deep(.p-inputnumber .p-inputtext:hover) {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 .form-content :deep(.p-autocomplete) {
@@ -327,19 +412,61 @@ const formatPercent = (value: number | undefined) => {
 .submit-btn {
   margin-top: 0.5rem;
   align-self: center;
-  background: #eb8b10 !important;
-  border-color: #eb8b10 !important;
+  background: #f59e0b !important;
+  border-color: #f59e0b !important;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.submit-btn:hover:not(:disabled) {
-  background: #d47d0e !important;
-  border-color: #d47d0e !important;
+.submit-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0);
+  transition: all 0.2s ease;
+  border-radius: inherit;
 }
 
-.submit-btn:disabled {
-  background: #eb8b10 !important;
-  border-color: #eb8b10 !important;
-  opacity: 0.9;
+.submit-btn:hover::before {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.submit-btn-disabled {
+  background: #ffffff !important;
+  border: 2px solid #f59e0b !important;
+  color: #f59e0b !important;
+  opacity: 1 !important;
+}
+
+.submit-btn-disabled:hover {
+  background: #f59e0b !important;
+  border-color: #f59e0b !important;
+  color: #ffffff !important;
+}
+
+/* Validerings-stil för fel */
+.form-content :deep(.p-invalid .p-inputtext),
+.form-content :deep(.p-invalid .p-autocomplete-input) {
+  border-bottom-color: #ef4444 !important;
+}
+
+/* Hela bordern röd för autocomplete med border */
+.form-content :deep(.p-invalid.p-autocomplete > .p-inputtext),
+.form-content :deep(.p-invalid .p-autocomplete > .p-inputtext) {
+  border: 1px solid #ef4444 !important;
+}
+
+/* Dropdown-ikon röd vid fel */
+.form-content :deep(.p-invalid .p-autocomplete-dropdown .p-icon) {
+  color: #ef4444 !important;
+}
+
+.form-content :deep(.p-invalid .p-inputtext::placeholder),
+.form-content :deep(.p-invalid .p-autocomplete-input::placeholder) {
+  color: #ef4444 !important;
 }
 
 .view-toggle {
@@ -351,22 +478,22 @@ const formatPercent = (value: number | undefined) => {
 .result-content {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.1rem;
 }
 
 .result-highlight {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
+  padding: 0.3rem 0;
   border-bottom: 2px solid #eb8b10;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.75rem;
   color: #eb8b10;
   opacity: 1;
 }
 
 .highlight-value {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: #eb8b10;
 }
@@ -375,8 +502,8 @@ const formatPercent = (value: number | undefined) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.1rem 0;
-  font-size: 0.9rem;
+  padding: 0.05rem 0;
+  font-size: 0.85rem;
 }
 
 .result-row span:first-child {

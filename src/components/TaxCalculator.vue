@@ -179,12 +179,13 @@ const formatName = (name: string): string => {
               <RegionSelect 
                 v-model="compareRegionId" 
                 :disabled="!!result"
+                placeholder="Sök region..."
                 aria-label="Välj region för jämförelse"
               />
               <MunicipalitySelect 
                 v-model="compareMunicipalityId" 
                 :region-id="compareRegionId"
-                :placeholder="submitted && validationErrors.compareMunicipality ? 'Sök kommun... - obligatoriskt fält' : 'Sök kommun att jämföra med...'"
+                :placeholder="submitted && validationErrors.compareMunicipality ? 'Sök kommun... - obligatoriskt fält' : 'Sök kommun...'"
                 :class="{ 'p-invalid': submitted && validationErrors.compareMunicipality }"
                 :disabled="!!result"
                 aria-label="Välj kommun för jämförelse"
@@ -213,7 +214,7 @@ const formatName = (name: string): string => {
     </Card>
 
     <!-- Result Cards -->
-    <template v-if="result">
+    <template v-if="result && (!compareMode || compareResult)">
       <Card class="calc-card" :class="{ 'calc-card-compare': compareResult }">
         <template #title>{{ compareResult ? formatName(result.municipalityName) : 'Per månad' }}</template>
         <template #content>
@@ -710,7 +711,7 @@ const formatName = (name: string): string => {
 
 .compare-label {
   font-size: 0.9rem;
-  color: #eb8b10;
+  color: #333333;
   font-weight: 500;
 }
 

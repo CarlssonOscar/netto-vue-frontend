@@ -6,6 +6,11 @@ import type { Region } from '@/types/tax'
 
 const modelValue = defineModel<string | null>({ default: null })
 
+const props = defineProps<{
+  disabled?: boolean
+  ariaLabel?: string
+}>()
+
 const store = useMunicipalityStore()
 const selectedRegion = ref<Region | null>(null)
 const filteredSuggestions = ref<Region[]>([])
@@ -43,5 +48,7 @@ const onClear = () => {
     @clear="onClear"
     dropdown
     class="w-full"
+    :disabled="props.disabled"
+    :aria-label="props.ariaLabel"
   />
 </template>

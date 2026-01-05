@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import InputNumber from 'primevue/inputnumber'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
@@ -10,13 +10,26 @@ import RegionSelect from './RegionSelect.vue'
 import MunicipalitySelect from './MunicipalitySelect.vue'
 import { useTaxCalculation } from '@/composables/useTaxCalculation'
 
-const { result, loading, error, calculate, reset } = useTaxCalculation()
+const { result, compareResult, loading, error, calculate, reset } = useTaxCalculation()
 
 const selectedRegionId = ref<string | null>(null)
 const municipalityId = ref('')
 const grossMonthlySalary = ref<number | null>(null)
 const churchMember = ref(false)
 const isPensioner = ref(false)
+
+// Jämförelse-läge
+const compareMode = ref(false)
+const compareRegionId = ref<string | null>(null)
+const compareMunicipalityId = ref('')
+
+// Återställ jämförelsekommun när compareMode stängs av
+watch(compareMode, (enabled) => {
+  if (!enabled) {
+    compareRegionId.value = null
+    compareMunicipalityId.value = ''
+  }
+})
 
 // Spårar om användaren har försökt skicka formuläret
 const submitted = ref(false)
@@ -26,16 +39,30 @@ const validationErrors = computed(() => ({
   municipality: !municipalityId.value ? 'Obligatoriskt fält' : null,
   salary: !grossMonthlySalary.value || grossMonthlySalary.value <= 0 
     ? 'Obligatoriskt fält' 
-    : null
+    : null,
+  compareMunicipality: compareMode.value && !compareMunicipalityId.value ? 'Obligatoriskt fält' : null
 }))
 
 const isValid = computed(() => {
-  return municipalityId.value && grossMonthlySalary.value && grossMonthlySalary.value > 0
+  const baseValid = municipalityId.value && grossMonthlySalary.value && grossMonthlySalary.value > 0
+  if (compareMode.value) {
+    return baseValid && compareMunicipalityId.value
+  }
+  return baseValid
 })
 
 const handleReset = () => {
   reset()
   submitted.value = false
+  // Rensa alla formulärfält
+  selectedRegionId.value = null
+  municipalityId.value = ''
+  grossMonthlySalary.value = null
+  churchMember.value = false
+  isPensioner.value = false
+  compareMode.value = false
+  compareRegionId.value = null
+  compareMunicipalityId.value = ''
 }
 
 const handleSubmit = () => {
@@ -43,13 +70,25 @@ const handleSubmit = () => {
   
   if (!isValid.value || !grossMonthlySalary.value) return
 
-  calculate({
+  const baseRequest = {
     municipalityId: municipalityId.value,
     grossMonthlySalary: grossMonthlySalary.value,
     churchMember: churchMember.value,
     isPensioner: isPensioner.value
-  })
+  }
+
+  if (compareMode.value && compareMunicipalityId.value) {
+    calculate(baseRequest, {
+      ...baseRequest,
+      municipalityId: compareMunicipalityId.value
+    })
+  } else {
+    calculate(baseRequest)
+  }
 }
+
+// Beräkna skillnad mellan två värden
+const getDiff = (val1: number, val2: number) => val1 - val2
 
 const formatCurrency = (value: number | undefined) => {
   if (value === undefined || value === null) return '0'
@@ -59,6 +98,11 @@ const formatCurrency = (value: number | undefined) => {
   })
 }
 
+const formatDiff = (diff: number) => {
+  const prefix = diff > 0 ? '+' : ''
+  return prefix + formatCurrency(diff)
+}
+
 const formatPercent = (value: number | undefined) => {
   if (value === undefined || value === null) return '0,00'
   return value.toLocaleString('sv-SE', {
@@ -66,12 +110,21 @@ const formatPercent = (value: number | undefined) => {
     maximumFractionDigits: 2
   })
 }
+
+// Formatera kommunnamn till title case (första bokstaven stor, resten små)
+const formatName = (name: string): string => {
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
 </script>
 
 <template>
   <div class="calculator-container">
     <!-- Input Card -->
-    <Card class="calc-card">
+    <Card class="calc-card" :class="{ 'calc-card-expanded': compareMode }">
       <template #title>Beräkna nettolön</template>
       <template #content>
         <form @submit.prevent="handleSubmit" class="form-content">
@@ -112,7 +165,32 @@ const formatPercent = (value: number | undefined) => {
               <Checkbox v-model="isPensioner" :binary="true" inputId="isPensioner" :disabled="!!result" />
               <label for="isPensioner">Pensionär</label>
             </div>
+            <div class="checkbox-item">
+              <Checkbox v-model="compareMode" :binary="true" inputId="compareMode" :disabled="!!result" />
+              <label for="compareMode">Jämför med annan kommun</label>
+            </div>
           </div>
+
+          <!-- Jämförelse-sektion -->
+          <template v-if="compareMode">
+            <Divider />
+            <div class="compare-section">
+              <span class="compare-label">Jämför med:</span>
+              <RegionSelect 
+                v-model="compareRegionId" 
+                :disabled="!!result"
+                aria-label="Välj region för jämförelse"
+              />
+              <MunicipalitySelect 
+                v-model="compareMunicipalityId" 
+                :region-id="compareRegionId"
+                :placeholder="submitted && validationErrors.compareMunicipality ? 'Sök kommun... - obligatoriskt fält' : 'Sök kommun att jämföra med...'"
+                :class="{ 'p-invalid': submitted && validationErrors.compareMunicipality }"
+                :disabled="!!result"
+                aria-label="Välj kommun för jämförelse"
+              />
+            </div>
+          </template>
 
           <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
 
@@ -136,8 +214,8 @@ const formatPercent = (value: number | undefined) => {
 
     <!-- Result Cards -->
     <template v-if="result">
-      <Card class="calc-card">
-        <template #title>Per månad</template>
+      <Card class="calc-card" :class="{ 'calc-card-compare': compareResult }">
+        <template #title>{{ compareResult ? formatName(result.municipalityName) : 'Per månad' }}</template>
         <template #content>
           <div class="result-content">
             <div class="result-highlight">
@@ -149,28 +227,28 @@ const formatPercent = (value: number | undefined) => {
               <span>{{ formatCurrency(result.grossMonthlySalary) }} kr</span>
             </div>
             <div class="result-row">
-              <span>Kommunalskatt</span>
-              <span class="deduction">-{{ formatCurrency(result.yearlyMunicipalTax / 12) }} kr</span>
+              <span>Kommunalskatt ({{ formatPercent(result.municipalTaxRate * 100) }}%)</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(result.yearlyMunicipalTax / 12) }} kr</span>
             </div>
             <div class="result-row">
-              <span>Regionskatt</span>
-              <span class="deduction">-{{ formatCurrency(result.yearlyRegionalTax / 12) }} kr</span>
+              <span>Regionskatt ({{ formatPercent(result.regionalTaxRate * 100) }}%)</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(result.yearlyRegionalTax / 12) }} kr</span>
             </div>
             <div v-if="result.yearlyStateTax > 0" class="result-row">
               <span>Statlig skatt</span>
-              <span class="deduction">-{{ formatCurrency(result.yearlyStateTax / 12) }} kr</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(result.yearlyStateTax / 12) }} kr</span>
             </div>
             <div class="result-row">
               <span>Begravningsavgift</span>
-              <span class="deduction">-{{ formatCurrency(result.yearlyBurialFee / 12) }} kr</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(result.yearlyBurialFee / 12) }} kr</span>
             </div>
             <div v-if="result.yearlyChurchFee > 0" class="result-row">
               <span>Kyrkoavgift</span>
-              <span class="deduction">-{{ formatCurrency(result.yearlyChurchFee / 12) }} kr</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(result.yearlyChurchFee / 12) }} kr</span>
             </div>
             <div class="result-row">
               <span>Jobbskatteavdrag</span>
-              <span class="addition">+{{ formatCurrency(result.yearlyJobTaxCredit / 12) }} kr</span>
+              <span class="addition"><span class="sign">+</span>{{ formatCurrency(result.yearlyJobTaxCredit / 12) }} kr</span>
             </div>
             <Divider />
             <div class="result-row">
@@ -181,7 +259,100 @@ const formatPercent = (value: number | undefined) => {
         </template>
       </Card>
 
-      <Card class="calc-card">
+      <!-- Jämförelse-kort eller årskort -->
+      <Card v-if="compareResult" class="calc-card calc-card-compare">
+        <template #title>{{ formatName(compareResult.municipalityName) }}</template>
+        <template #content>
+          <div class="result-content">
+            <div class="result-highlight">
+              <span>Nettolön</span>
+              <span class="highlight-value">{{ formatCurrency(compareResult.netMonthlySalary) }} kr</span>
+            </div>
+            <div class="result-row">
+              <span>Bruttolön</span>
+              <span>{{ formatCurrency(compareResult.grossMonthlySalary) }} kr</span>
+            </div>
+            <div class="result-row">
+              <span>Kommunalskatt ({{ formatPercent(compareResult.municipalTaxRate * 100) }}%)</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(compareResult.yearlyMunicipalTax / 12) }} kr</span>
+            </div>
+            <div class="result-row">
+              <span>Regionskatt ({{ formatPercent(compareResult.regionalTaxRate * 100) }}%)</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(compareResult.yearlyRegionalTax / 12) }} kr</span>
+            </div>
+            <div v-if="compareResult.yearlyStateTax > 0" class="result-row">
+              <span>Statlig skatt</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(compareResult.yearlyStateTax / 12) }} kr</span>
+            </div>
+            <div class="result-row">
+              <span>Begravningsavgift</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(compareResult.yearlyBurialFee / 12) }} kr</span>
+            </div>
+            <div v-if="compareResult.yearlyChurchFee > 0" class="result-row">
+              <span>Kyrkoavgift</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(compareResult.yearlyChurchFee / 12) }} kr</span>
+            </div>
+            <div class="result-row">
+              <span>Jobbskatteavdrag</span>
+              <span class="addition"><span class="sign">+</span>{{ formatCurrency(compareResult.yearlyJobTaxCredit / 12) }} kr</span>
+            </div>
+            <Divider />
+            <div class="result-row">
+              <span>Effektiv skatt</span>
+              <span>{{ formatPercent(compareResult.effectiveTaxRate * 100) }}%</span>
+            </div>
+          </div>
+        </template>
+      </Card>
+
+      <!-- Skillnadskort vid jämförelse -->
+      <Card v-if="compareResult" class="calc-card calc-card-diff">
+        <template #title>Skillnad per månad</template>
+        <template #content>
+          <div class="result-content">
+            <div class="result-highlight">
+              <span>Nettolön</span>
+              <span class="highlight-value" :class="getDiff(result.netMonthlySalary, compareResult.netMonthlySalary) >= 0 ? 'diff-positive' : 'diff-negative'">
+                {{ formatDiff(getDiff(result.netMonthlySalary, compareResult.netMonthlySalary)) }} kr
+              </span>
+            </div>
+            <div class="result-row">
+              <span>Kommunalskatt</span>
+              <span :class="getDiff(result.yearlyMunicipalTax, compareResult.yearlyMunicipalTax) <= 0 ? 'diff-positive' : 'diff-negative'">
+                {{ formatDiff(-getDiff(result.yearlyMunicipalTax / 12, compareResult.yearlyMunicipalTax / 12)) }} kr
+              </span>
+            </div>
+            <div class="result-row">
+              <span>Regionskatt</span>
+              <span :class="getDiff(result.yearlyRegionalTax, compareResult.yearlyRegionalTax) <= 0 ? 'diff-positive' : 'diff-negative'">
+                {{ formatDiff(-getDiff(result.yearlyRegionalTax / 12, compareResult.yearlyRegionalTax / 12)) }} kr
+              </span>
+            </div>
+            <div class="result-row">
+              <span>Total skatt</span>
+              <span :class="getDiff(result.monthlyTotalTax, compareResult.monthlyTotalTax) <= 0 ? 'diff-positive' : 'diff-negative'">
+                {{ formatDiff(-getDiff(result.monthlyTotalTax, compareResult.monthlyTotalTax)) }} kr
+              </span>
+            </div>
+            <Divider />
+            <div class="result-row">
+              <span>Effektiv skatt</span>
+              <span :class="getDiff(result.effectiveTaxRate, compareResult.effectiveTaxRate) <= 0 ? 'diff-positive' : 'diff-negative'">
+                {{ getDiff(result.effectiveTaxRate, compareResult.effectiveTaxRate) > 0 ? '+' : '' }}{{ formatPercent(getDiff(result.effectiveTaxRate, compareResult.effectiveTaxRate) * 100) }}%
+              </span>
+            </div>
+            <div class="result-row yearly-note">
+              <span>Skillnad per år</span>
+              <span :class="getDiff(result.netMonthlySalary, compareResult.netMonthlySalary) >= 0 ? 'diff-positive' : 'diff-negative'">
+                {{ formatDiff(getDiff(result.netMonthlySalary, compareResult.netMonthlySalary) * 12) }} kr
+              </span>
+            </div>
+          </div>
+        </template>
+      </Card>
+
+      <!-- Årskort (endast utan jämförelse) -->
+      <Card v-if="!compareResult" class="calc-card">
         <template #title>Per år</template>
         <template #content>
           <div class="result-content">
@@ -195,23 +366,23 @@ const formatPercent = (value: number | undefined) => {
             </div>
             <div class="result-row">
               <span>Kommunalskatt ({{ formatPercent(result.municipalTaxRate * 100) }}%)</span>
-              <span class="deduction">-{{ formatCurrency(result.yearlyMunicipalTax) }} kr</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(result.yearlyMunicipalTax) }} kr</span>
             </div>
             <div class="result-row">
               <span>Regionskatt ({{ formatPercent(result.regionalTaxRate * 100) }}%)</span>
-              <span class="deduction">-{{ formatCurrency(result.yearlyRegionalTax) }} kr</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(result.yearlyRegionalTax) }} kr</span>
             </div>
             <div v-if="result.yearlyStateTax > 0" class="result-row">
               <span>Statlig skatt</span>
-              <span class="deduction">-{{ formatCurrency(result.yearlyStateTax) }} kr</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(result.yearlyStateTax) }} kr</span>
             </div>
             <div class="result-row">
               <span>Begravningsavgift</span>
-              <span class="deduction">-{{ formatCurrency(result.yearlyBurialFee) }} kr</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(result.yearlyBurialFee) }} kr</span>
             </div>
             <div v-if="result.yearlyChurchFee > 0" class="result-row">
               <span>Kyrkoavgift</span>
-              <span class="deduction">-{{ formatCurrency(result.yearlyChurchFee) }} kr</span>
+              <span class="deduction"><span class="sign">−</span>{{ formatCurrency(result.yearlyChurchFee) }} kr</span>
             </div>
             <div class="result-row">
               <span>Grundavdrag</span>
@@ -219,7 +390,7 @@ const formatPercent = (value: number | undefined) => {
             </div>
             <div class="result-row">
               <span>Jobbskatteavdrag</span>
-              <span class="addition">+{{ formatCurrency(result.yearlyJobTaxCredit) }} kr</span>
+              <span class="addition"><span class="sign">+</span>{{ formatCurrency(result.yearlyJobTaxCredit) }} kr</span>
             </div>
             <Divider />
             <div class="result-row">
@@ -246,13 +417,19 @@ const formatPercent = (value: number | undefined) => {
 }
 
 .calc-card {
-  width: 410px;
+  width: 360px;
   height: 410px;
   flex-shrink: 0;
   border-radius: 20px !important;
   background: #ffffff;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+}
+
+/* Expanderat kort för jämförelseläge */
+.calc-card-expanded {
+  height: auto;
+  min-height: 410px;
 }
 
 .calc-card :deep(.p-card) {
@@ -501,7 +678,7 @@ const formatPercent = (value: number | undefined) => {
 }
 
 .result-row span:first-child {
-  color: rgba(0, 0, 0, 0.6);
+  color: #333333;
 }
 
 .result-row span:last-child {
@@ -517,25 +694,122 @@ const formatPercent = (value: number | undefined) => {
   color: #22c55e;
 }
 
-@media (max-width: 1100px) {
+.sign {
+  display: inline-block;
+  position: relative;
+  top: 2px;
+  margin-right: 3px;
+}
+
+/* Jämförelse-sektion */
+.compare-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.compare-label {
+  font-size: 0.9rem;
+  color: #eb8b10;
+  font-weight: 500;
+}
+
+/* Jämförelse-kort */
+.calc-card-compare,
+.calc-card-diff {
+  height: auto;
+  min-height: 320px;
+}
+
+/* Diff-färger */
+.diff-positive {
+  color: #22c55e !important;
+  font-weight: 600;
+}
+
+.diff-negative {
+  color: #ef4444 !important;
+  font-weight: 600;
+}
+
+.diff-explanation {
+  text-align: center;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #333333;
+}
+
+.yearly-note {
+  margin-top: 0.25rem;
+  font-weight: 600;
+}
+
+.yearly-note span:first-child {
+  color: #333333 !important;
+}
+
+/* Orange checkboxar när disabled och CHECKED (efter beräkning) */
+.checkbox-group :deep(.p-checkbox.p-disabled.p-checkbox-checked .p-checkbox-box) {
+  background: #eb8b10 !important;
+  border-color: #eb8b10 !important;
+  opacity: 1 !important;
+}
+
+.checkbox-group :deep(.p-checkbox.p-disabled.p-checkbox-checked .p-checkbox-box .p-checkbox-icon) {
+  color: #ffffff !important;
+}
+
+.checkbox-group :deep(.p-checkbox.p-disabled.p-checkbox-checked .p-checkbox-box svg) {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.checkbox-group :deep(.p-checkbox.p-disabled.p-checkbox-checked .p-checkbox-box .p-icon) {
+  color: #ffffff !important;
+}
+
+/* Unchecked disabled checkboxar - vita */
+.checkbox-group :deep(.p-checkbox.p-disabled:not(.p-checkbox-checked) .p-checkbox-box) {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  opacity: 1 !important;
+}
+
+.checkbox-group :deep(.p-checkbox.p-disabled + label) {
+  color: #333333 !important;
+  opacity: 1 !important;
+}
+
+/* Responsive: 2x2 grid vid mellanstor skärm */
+@media (max-width: 1500px) {
   .calculator-container {
     flex-wrap: wrap;
+    max-width: 900px;
   }
 
-  .calc-card {
-    width: 320px;
+  .calc-card,
+  .calc-card-compare,
+  .calc-card-diff {
+    width: calc(50% - 0.75rem);
+    min-width: 340px;
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 750px) {
   .calculator-container {
     flex-direction: column;
     align-items: center;
+    max-width: 100%;
   }
 
-  .calc-card {
+  .calc-card,
+  .calc-card-compare,
+  .calc-card-diff {
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
+    min-width: unset;
   }
 }
 </style>

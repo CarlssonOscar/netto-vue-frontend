@@ -56,7 +56,7 @@ const formatPercent = (value: number | undefined) => {
           <div class="result-content">
             <div class="result-highlight">
               <span class="result-label">Nettolön</span>
-              <span class="result-value highlight">{{ formatCurrency(result.monthlyNetSalary) }} kr</span>
+              <span class="result-value highlight">{{ formatCurrency(result.netMonthlySalary) }} kr</span>
             </div>
 
             <Divider />
@@ -68,39 +68,39 @@ const formatPercent = (value: number | undefined) => {
 
             <div class="result-row">
               <span class="result-label">Kommunalskatt</span>
-              <span class="result-value deduction">-{{ formatCurrency(result.municipalTax / 12) }} kr</span>
+              <span class="result-value deduction">-{{ formatCurrency(result.yearlyMunicipalTax / 12) }} kr</span>
             </div>
 
             <div class="result-row">
               <span class="result-label">Regionskatt</span>
-              <span class="result-value deduction">-{{ formatCurrency(result.regionalTax / 12) }} kr</span>
+              <span class="result-value deduction">-{{ formatCurrency(result.yearlyRegionalTax / 12) }} kr</span>
             </div>
 
-            <div v-if="result.stateTax > 0" class="result-row">
+            <div v-if="result.yearlyStateTax > 0" class="result-row">
               <span class="result-label">Statlig skatt</span>
-              <span class="result-value deduction">-{{ formatCurrency(result.stateTax / 12) }} kr</span>
+              <span class="result-value deduction">-{{ formatCurrency(result.yearlyStateTax / 12) }} kr</span>
             </div>
 
             <div class="result-row">
               <span class="result-label">Begravningsavgift</span>
-              <span class="result-value deduction">-{{ formatCurrency(result.burialFee / 12) }} kr</span>
+              <span class="result-value deduction">-{{ formatCurrency(result.yearlyBurialFee / 12) }} kr</span>
             </div>
 
-            <div v-if="result.churchFee > 0" class="result-row">
+            <div v-if="result.yearlyChurchFee > 0" class="result-row">
               <span class="result-label">Kyrkoavgift</span>
-              <span class="result-value deduction">-{{ formatCurrency(result.churchFee / 12) }} kr</span>
+              <span class="result-value deduction">-{{ formatCurrency(result.yearlyChurchFee / 12) }} kr</span>
             </div>
 
             <div class="result-row">
               <span class="result-label">Jobbskatteavdrag</span>
-              <span class="result-value addition">+{{ formatCurrency(result.jobTaxCredit / 12) }} kr</span>
+              <span class="result-value addition">+{{ formatCurrency(result.yearlyJobTaxCredit / 12) }} kr</span>
             </div>
 
             <Divider />
 
             <div class="result-row">
               <span class="result-label">Effektiv skatt</span>
-              <span class="result-value">{{ formatPercent(result.effectiveTaxRate) }}%</span>
+              <span class="result-value">{{ formatPercent(result.effectiveTaxRate * 100) }}%</span>
             </div>
           </div>
         </template>
@@ -115,7 +115,7 @@ const formatPercent = (value: number | undefined) => {
           <div class="result-content">
             <div class="result-highlight">
               <span class="result-label">Nettolön</span>
-              <span class="result-value highlight">{{ formatCurrency(result.yearlyNetSalary) }} kr</span>
+              <span class="result-value highlight">{{ formatCurrency(result.grossYearlySalary - result.yearlyTotalTax) }} kr</span>
             </div>
 
             <Divider />
@@ -126,50 +126,50 @@ const formatPercent = (value: number | undefined) => {
             </div>
 
             <div class="result-row">
-              <span class="result-label">Kommunalskatt ({{ formatPercent(result.municipalTaxRate) }}%)</span>
-              <span class="result-value deduction">-{{ formatCurrency(result.municipalTax) }} kr</span>
+              <span class="result-label">Kommunalskatt ({{ formatPercent(result.municipalTaxRate * 100) }}%)</span>
+              <span class="result-value deduction">-{{ formatCurrency(result.yearlyMunicipalTax) }} kr</span>
             </div>
 
             <div class="result-row">
-              <span class="result-label">Regionskatt ({{ formatPercent(result.regionalTaxRate) }}%)</span>
-              <span class="result-value deduction">-{{ formatCurrency(result.regionalTax) }} kr</span>
+              <span class="result-label">Regionskatt ({{ formatPercent(result.regionalTaxRate * 100) }}%)</span>
+              <span class="result-value deduction">-{{ formatCurrency(result.yearlyRegionalTax) }} kr</span>
             </div>
 
-            <div v-if="result.stateTax > 0" class="result-row">
+            <div v-if="result.yearlyStateTax > 0" class="result-row">
               <span class="result-label">Statlig skatt</span>
-              <span class="result-value deduction">-{{ formatCurrency(result.stateTax) }} kr</span>
+              <span class="result-value deduction">-{{ formatCurrency(result.yearlyStateTax) }} kr</span>
             </div>
 
             <div class="result-row">
               <span class="result-label">Begravningsavgift</span>
-              <span class="result-value deduction">-{{ formatCurrency(result.burialFee) }} kr</span>
+              <span class="result-value deduction">-{{ formatCurrency(result.yearlyBurialFee) }} kr</span>
             </div>
 
-            <div v-if="result.churchFee > 0" class="result-row">
+            <div v-if="result.yearlyChurchFee > 0" class="result-row">
               <span class="result-label">Kyrkoavgift</span>
-              <span class="result-value deduction">-{{ formatCurrency(result.churchFee) }} kr</span>
+              <span class="result-value deduction">-{{ formatCurrency(result.yearlyChurchFee) }} kr</span>
             </div>
 
             <div class="result-row">
               <span class="result-label">Grundavdrag</span>
-              <span class="result-value">{{ formatCurrency(result.basicDeduction) }} kr</span>
+              <span class="result-value">{{ formatCurrency(result.yearlyBasicDeduction) }} kr</span>
             </div>
 
             <div class="result-row">
               <span class="result-label">Jobbskatteavdrag</span>
-              <span class="result-value addition">+{{ formatCurrency(result.jobTaxCredit) }} kr</span>
+              <span class="result-value addition">+{{ formatCurrency(result.yearlyJobTaxCredit) }} kr</span>
             </div>
 
             <Divider />
 
             <div class="result-row">
               <span class="result-label">Total skatt</span>
-              <span class="result-value">{{ formatCurrency(result.totalTaxAfterCredit) }} kr</span>
+              <span class="result-value">{{ formatCurrency(result.yearlyTotalTax) }} kr</span>
             </div>
 
             <div class="result-row">
               <span class="result-label">Effektiv skatt</span>
-              <span class="result-value">{{ formatPercent(result.effectiveTaxRate) }}%</span>
+              <span class="result-value">{{ formatPercent(result.effectiveTaxRate * 100) }}%</span>
             </div>
           </div>
         </template>

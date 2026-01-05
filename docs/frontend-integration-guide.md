@@ -1,374 +1,439 @@
-# Frontend Integration Guide (API Gateway)
+# NettoApi - Frontend Integration Guide
 
-> **Purpose**: API reference for frontend developers integrating via the MuleSoft API Gateway  
-> **Base URL**: `http://localhost:8081/gateway`  
-> **Last Updated**: 2025-12-30
->
-> **Note**: For direct backend access (demos without MuleSoft), see the backend project's integration guide.
-
----
-
-## Quick Start
-
-### Calculate Net Salary
-
-```javascript
-const response = await fetch('http://localhost:8081/gateway/tax/calculate', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    municipalityId: '550e8400-e29b-41d4-a716-446655440000',
-    grossMonthlySalary: 50000,
-    churchMember: false,
-    isPensioner: false
-  })
-});
-
-const result = await response.json();
-console.log(`Net salary: ${result.monthlyNetSalary} SEK`);
-```
+> **Purpose**: API integration reference for Vue 3 + TypeScript + PrimeVue  
+> **Backend**: Spring Boot 3.x, Java 21  
+> **Tax Year**: 2026 (SKV 433)  
+> **Last Updated**: 2026-01-05
 
 ---
 
 ## API Endpoints
 
-### POST /gateway/tax/calculate
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/regions` | Alla regioner (21 st) |
+| `GET` | `/api/v1/municipalities` | Alla kommuner (290 st) |
+| `GET` | `/api/v1/municipalities/by-region/{regionId}` | Kommuner i vald region |
+| `POST` | `/api/v1/tax/calculate` | Beräkna nettolön (med UUID) |
+| `GET` | `/api/v1/tax/calculate-by-code` | Beräkna nettolön (med kommunkod) |
 
-Calculate net salary with full Swedish tax breakdown.
+**Base URL**: `http://localhost:8080/api/v1`
 
-**Request Body:**
+> ⚠️ **OBS**: All kommunikation sker via API Gateway på port 8080. Backend-tjänsten körs internt på port 8181 men ska aldrig anropas direkt från frontend.
 
-```json
-{
-  "municipalityId": "550e8400-e29b-41d4-a716-446655440000",
-  "grossMonthlySalary": 50000,
-  "churchMember": false,
-  "isPensioner": false
+**OpenAPI**: `GET /api/v1/api-docs`
+
+---
+
+## TypeScript Types
+
+```typescript
+// src/types/index.ts
+
+export interface Region {
+  id: string;        // UUID
+  code: string;      // "24"
+  name: string;      // "Västerbotten"
+}
+
+export interface Municipality {
+  id: string;        // UUID
+  code: string;      // "2480"
+  name: string;      // "Umeå"
+  regionId: string;
+}
+
+export interface TaxCalculationRequest {
+  municipalityId: string;       // Required (UUID)
+  grossMonthlySalary: number;   // Required, positive
+  churchMember?: boolean;       // Default: false
+  isPensioner?: boolean;        // Default: false
+}
+
+// Alternativt för calculate-by-code endpoint
+export interface TaxCalculationByCodeParams {
+  municipalityCode: string;     // Required, e.g. "2480"
+  grossSalary: number;          // Required, positive
+  churchMember?: boolean;       // Default: false
+  isPensioner?: boolean;        // Default: false
+}
+
+export interface TaxCalculationResponse {
+  // Identifiering
+  municipalityId: string;
+  municipalityName: string;
+  regionName: string;
+  
+  // Inkomst
+  grossMonthlySalary: number;
+  grossYearlySalary: number;
+  
+  // Skattesatser (decimal, t.ex. 0.228 = 22.8%)
+  municipalTaxRate: number;
+  regionalTaxRate: number;
+  stateTaxRate: number;
+  burialFeeRate: number;
+  churchFeeRate: number;
+  
+  // Avdrag (årsvärden)
+  yearlyBasicDeduction: number;
+  yearlyJobTaxCredit: number;
+  
+  // Beräknade skatter (årsvärden)
+  yearlyTaxableIncome: number;
+  yearlyMunicipalTax: number;
+  yearlyRegionalTax: number;
+  yearlyStateTax: number;
+  yearlyBurialFee: number;
+  yearlyChurchFee: number;
+  yearlyTotalTax: number;
+  
+  // Månadsvärden
+  monthlyTotalTax: number;
+  netMonthlySalary: number;
+  
+  // Summering
+  effectiveTaxRate: number;
+}
+
+export interface ApiError {
+  timestamp: string;
+  status: number;
+  error: string;
+  message?: string;
+  messages?: string[];  // Valideringsfel
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `municipalityId` | UUID | ✅ | Municipality identifier |
-| `grossMonthlySalary` | number | ✅ | Monthly salary before tax (SEK) |
-| `churchMember` | boolean | ❌ | Swedish Church member (default: false) |
-| `isPensioner` | boolean | ❌ | Age 65+ (default: false) |
+---
 
-**Response (200 OK):**
+## API Services
 
-```json
-{
-  "grossMonthlySalary": 50000.00,
-  "grossYearlySalary": 600000.00,
-  "municipalityName": "Umeå",
-  "regionName": "Västerbotten",
-  "taxableIncome": 558135.60,
-  "basicDeduction": 41864.40,
-  "municipalTax": 121673.53,
-  "regionalTax": 60622.16,
-  "stateTax": 0.00,
-  "burialFee": 1548.00,
-  "churchFee": 0.00,
-  "totalTaxBeforeCredit": 183843.69,
-  "jobTaxCredit": 38517.24,
-  "totalTaxAfterCredit": 145326.45,
-  "yearlyNetSalary": 454673.55,
-  "monthlyNetSalary": 37889.46,
-  "effectiveTaxRate": 24.22,
-  "municipalTaxRate": 21.79,
-  "regionalTaxRate": 10.86
+```typescript
+// src/services/api.ts
+import axios from 'axios';
+
+// API Gateway URL - all requests go through port 8080
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
+
+export const api = axios.create({
+  baseURL: API_BASE,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 10000,
+});
+```
+
+```typescript
+// src/services/municipalityService.ts
+export const municipalityService = {
+  getRegions: () => api.get<Region[]>('/regions'),
+  getMunicipalitiesByRegion: (regionId: string) => 
+    api.get<Municipality[]>(`/municipalities/by-region/${regionId}`),
+  getAllMunicipalities: () => api.get<Municipality[]>('/municipalities'),
+};
+```
+
+```typescript
+// src/services/taxService.ts
+export const taxService = {
+  // Beräkna med UUID (POST)
+  calculate: (request: TaxCalculationRequest) => 
+    api.post<TaxCalculationResponse>('/tax/calculate', request),
+  
+  // Beräkna med kommunkod (GET) - enklare för snabblänkar
+  calculateByCode: (params: TaxCalculationByCodeParams) => 
+    api.get<TaxCalculationResponse>('/tax/calculate-by-code', { params }),
+};
+```
+
+### Exempel: calculate-by-code
+
+```typescript
+// Enkel beräkning med kommunkod
+const result = await taxService.calculateByCode({
+  municipalityCode: '2480',  // Umeå
+  grossSalary: 37500,
+  churchMember: false,
+  isPensioner: false
+});
+
+console.log(result.data.netMonthlySalary);  // 29250.12
+console.log(result.data.monthlyTotalTax);   // 8249.88
+```
+
+---
+
+## Composables
+
+### useMunicipalities
+
+Hanterar region → kommun-filtrering.
+
+```typescript
+// src/composables/useMunicipalities.ts
+export function useMunicipalities() {
+  const regions = ref<Region[]>([]);
+  const municipalities = ref<Municipality[]>([]);
+  const selectedRegionId = ref<string | null>(null);
+  const selectedMunicipalityId = ref<string | null>(null);
+  const loading = ref(false);
+
+  // Ladda regioner vid mount
+  onMounted(async () => {
+    const { data } = await municipalityService.getRegions();
+    regions.value = data.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+  });
+
+  // När region ändras → ladda kommuner
+  watch(selectedRegionId, async (regionId) => {
+    if (!regionId) {
+      municipalities.value = [];
+      selectedMunicipalityId.value = null;
+      return;
+    }
+    loading.value = true;
+    const { data } = await municipalityService.getMunicipalitiesByRegion(regionId);
+    municipalities.value = data.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+    selectedMunicipalityId.value = null;
+    loading.value = false;
+  });
+
+  return { regions, municipalities, selectedRegionId, selectedMunicipalityId, loading };
+}
+```
+
+### useTaxCalculator
+
+Hanterar beräkning och resultat.
+
+```typescript
+// src/composables/useTaxCalculator.ts
+export function useTaxCalculator() {
+  const result = ref<TaxCalculationResponse | null>(null);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+
+  async function calculate(request: TaxCalculationRequest) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const { data } = await taxService.calculate(request);
+      result.value = data;
+    } catch (err: any) {
+      error.value = err.response?.data?.message || 'Kunde inte beräkna';
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  return { result, loading, error, calculate };
 }
 ```
 
 ---
 
-### GET /gateway/regions
+## Component Structure
 
-List all Swedish regions (län).
+```
+┌─────────────────────────────────────────────────────────┐
+│                    TaxCalculatorPage                     │
+├─────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────┐    │
+│  │              TaxInputForm                        │    │
+│  │  • Dropdown: Region                             │    │
+│  │  • Dropdown: Kommun (filtreras på region)       │    │
+│  │  • InputNumber: Bruttolön                       │    │
+│  │  • Checkbox: Kyrkomedlem, Pensionär             │    │
+│  │  • Button: Beräkna                              │    │
+│  └─────────────────────────────────────────────────┘    │
+│                                                         │
+│  ┌──────────────────────┐  ┌──────────────────────┐    │
+│  │   TaxResultCard      │  │   TaxResultCard      │    │
+│  │   period="monthly"   │  │   period="yearly"    │    │
+│  └──────────────────────┘  └──────────────────────┘    │
+└─────────────────────────────────────────────────────────┘
+```
 
-**Response:**
+### TaxInputForm
 
-```json
-[
-  {
-    "id": "uuid",
-    "code": "24",
-    "name": "Västerbotten"
-  }
-]
+| Prop | Type | Description |
+|------|------|-------------|
+| `loading` | `boolean` | Disable button under beräkning |
+
+| Emit | Payload | Description |
+|------|---------|-------------|
+| `submit` | `TaxCalculationRequest` | Formulärdata vid submit |
+
+### TaxResultCard
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `result` | `TaxCalculationResponse` | Beräkningsresultat |
+| `period` | `'monthly' \| 'yearly'` | Visar månads- eller årsvärden |
+
+**Beräkningslogik för period:**
+```typescript
+const divisor = period === 'monthly' ? 12 : 1;
+
+// Direkt från API
+const netSalary = period === 'monthly' 
+  ? result.netMonthlySalary 
+  : result.grossYearlySalary - result.yearlyTotalTax;
+
+const grossSalary = period === 'monthly' 
+  ? result.grossMonthlySalary 
+  : result.grossYearlySalary;
+
+const totalTax = period === 'monthly'
+  ? result.monthlyTotalTax
+  : result.yearlyTotalTax;
+
+// Övriga årsfält divideras för månadsvisning
+const municipalTax = result.yearlyMunicipalTax / divisor;
+const regionalTax = result.yearlyRegionalTax / divisor;
+const stateTax = result.yearlyStateTax / divisor;
+const burialFee = result.yearlyBurialFee / divisor;
+const churchFee = result.yearlyChurchFee / divisor;
+const basicDeduction = result.yearlyBasicDeduction / divisor;
+const jobTaxCredit = result.yearlyJobTaxCredit / divisor;
 ```
 
 ---
 
-### GET /gateway/municipalities
+## Detaljvy - Beräkningsflöde
 
-List all municipalities in Sweden.
+Visa i expanderbar sektion ("Visa detaljer"):
 
-**Response:**
+| Sektion | Fält | API-fält | Formel |
+|---------|------|----------|--------|
+| **Inkomst** | Bruttolön | `grossYearlySalary` | |
+| | Grundavdrag | `yearlyBasicDeduction` | SKV 433 §6.1 |
+| | Beskattningsbar inkomst | `yearlyTaxableIncome` | brutto - grundavdrag |
+| **Skatter** | Kommunalskatt | `yearlyMunicipalTax` | BFI × `municipalTaxRate` |
+| | Regionskatt | `yearlyRegionalTax` | BFI × `regionalTaxRate` |
+| | Statlig skatt | `yearlyStateTax` | 20% över 643 000 kr |
+| **Avgifter** | Begravningsavgift | `yearlyBurialFee` | BFI × `burialFeeRate` |
+| | Kyrkoavgift | `yearlyChurchFee` | 0 om ej medlem |
+| **Reduktioner** | Jobbskatteavdrag | `yearlyJobTaxCredit` | SKV 433 §7.5.2 |
+| **Resultat** | Total skatt | `yearlyTotalTax` | |
+| | Månadsskatt | `monthlyTotalTax` | total / 12 |
+| | **Nettolön** | `netMonthlySalary` | brutto - månadsskatt |
+| | Effektiv skattesats | `effectiveTaxRate` | total / brutto |
 
-```json
-[
-  {
-    "id": "uuid",
-    "code": "2480",
-    "name": "Umeå",
-    "municipalTaxRate": 21.79,
-    "regionId": "uuid",
-    "regionName": "Västerbotten"
-  }
-]
+> **SKV 433**: Beräkningarna följer Skatteverkets tekniska beskrivning för skattetabeller 2026.
+> Inkluderar allmän pensionsavgift (7%), skattereduktioner och public service-avgift.
+
+---
+
+## PrimeVue Components
+
+Rekommenderade komponenter:
+
+| Fält | PrimeVue Component |
+|------|-------------------|
+| Region/Kommun | `Dropdown` med `filter` |
+| Bruttolön | `InputNumber` med `currency="SEK"` |
+| Checkboxar | `Checkbox` |
+| Beräkna-knapp | `Button` |
+| Resultat-kort | `Card` |
+| Detaljer | `Accordion` eller `Panel` |
+| Tabell | `DataTable` (readonly) |
+
+---
+
+## CORS (Backend)
+
+CORS är konfigurerat i API Gateway på port 8080. Frontend-applikationer på följande origins tillåts:
+
+- `http://localhost:5173` (Vite dev server)
+- `http://localhost:3000` (alternativ dev port)
+
+> **Notera**: Anropa alltid API:et via port 8080 (API Gateway), aldrig direkt mot backend på port 8181.
+
+---
+
+## Environment
+
+```env
+# .env.development
+VITE_API_BASE_URL=http://localhost:8080/api/v1
+
+# .env.production  
+VITE_API_BASE_URL=https://api.example.com/api/v1
 ```
 
----
-
-### GET /gateway/municipalities/by-region/{regionId}
-
-Get municipalities in a specific region.
-
-**Parameters:**
-- `regionId` (path) - UUID of the region
-
----
-
-### GET /gateway/municipalities/{id}
-
-Get a single municipality by ID.
-
-**Parameters:**
-- `id` (path) - UUID of the municipality
+> ⚠️ **Viktigt**: Använd alltid API Gateway URL, inte direkt backend-URL.
 
 ---
 
 ## Error Handling
 
-### Error Response Format
+| Status | Hantering |
+|--------|-----------|
+| `200` | Visa resultat |
+| `400` | Visa `messages[]` array (valideringsfel) |
+| `404` | "Kommun hittades inte" |
+| `500` | Generiskt felmeddelande |
+| Network | "Kunde inte ansluta till servern" |
+
+---
+
+## Exempel: Komplett API-svar
 
 ```json
 {
-  "timestamp": "2025-12-30T10:00:00.000",
-  "status": 400,
-  "error": "Validation Failed",
-  "messages": [
-    "municipalityId: Municipality ID is required"
-  ]
+  "municipalityId": "bc208ea4-81dc-4ddb-be51-321e2ffc0f35",
+  "municipalityName": "UMEÅ",
+  "regionName": "Västerbottens län",
+  "grossMonthlySalary": 37500,
+  "grossYearlySalary": 450000,
+  "municipalTaxRate": 0.228,
+  "regionalTaxRate": 0.1185,
+  "stateTaxRate": 0.2,
+  "burialFeeRate": 0.00292,
+  "churchFeeRate": 0,
+  "yearlyBasicDeduction": 19000,
+  "yearlyJobTaxCredit": 51285,
+  "yearlyTaxableIncome": 431000,
+  "yearlyMunicipalTax": 98268,
+  "yearlyRegionalTax": 51073.5,
+  "yearlyStateTax": 0,
+  "yearlyBurialFee": 1258,
+  "yearlyChurchFee": 0,
+  "yearlyTotalTax": 98998.5,
+  "monthlyTotalTax": 8249.88,
+  "netMonthlySalary": 29250.12,
+  "effectiveTaxRate": 0.22
 }
 ```
 
-### HTTP Status Codes
-
-| Status | Meaning | Action |
-|--------|---------|--------|
-| 200 | Success | Use response data |
-| 400 | Validation error | Check request fields |
-| 404 | Municipality not found | Verify municipalityId |
-| 500 | Server error | Retry or contact support |
-
 ---
 
-## Vue Integration Example
-
-### Composable
+## Formatering för visning
 
 ```typescript
-// composables/useTaxCalculation.ts
-import { ref } from 'vue'
+// src/utils/formatters.ts
 
-interface TaxRequest {
-  municipalityId: string
-  grossMonthlySalary: number
-  churchMember?: boolean
-  isPensioner?: boolean
-}
+export const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('sv-SE', {
+    style: 'currency',
+    currency: 'SEK',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
+};
 
-interface TaxResult {
-  grossMonthlySalary: number
-  monthlyNetSalary: number
-  effectiveTaxRate: number
-  municipalTax: number
-  regionalTax: number
-  stateTax: number
-  jobTaxCredit: number
-  // ... other fields
-}
+export const formatPercent = (value: number): string => {
+  return new Intl.NumberFormat('sv-SE', {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2
+  }).format(value);
+};
 
-export function useTaxCalculation() {
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-  const result = ref<TaxResult | null>(null)
-
-  const calculate = async (request: TaxRequest) => {
-    loading.value = true
-    error.value = null
-    
-    try {
-      const response = await fetch('http://localhost:8081/gateway/tax/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request)
-      })
-      
-      if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.messages?.join(', ') || err.message)
-      }
-      
-      result.value = await response.json()
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Unknown error'
-    } finally {
-      loading.value = false
-    }
-  }
-
-  return { calculate, loading, error, result }
-}
+// Exempel:
+// formatCurrency(29250.12)  → "29 250 kr"
+// formatPercent(0.228)      → "22,8 %"
 ```
-
-### Component Example
-
-```vue
-<!-- components/SalaryCalculator.vue -->
-<script setup lang="ts">
-import { ref } from 'vue'
-import { useTaxCalculation } from '@/composables/useTaxCalculation'
-
-const { calculate, loading, error, result } = useTaxCalculation()
-
-const municipalityId = ref('')
-const salary = ref<number>(0)
-const churchMember = ref(false)
-const isPensioner = ref(false)
-
-const handleSubmit = () => {
-  calculate({
-    municipalityId: municipalityId.value,
-    grossMonthlySalary: salary.value,
-    churchMember: churchMember.value,
-    isPensioner: isPensioner.value
-  })
-}
-</script>
-
-<template>
-  <form @submit.prevent="handleSubmit">
-    <!-- Form fields -->
-    
-    <p v-if="loading">Calculating...</p>
-    <p v-if="error" class="error">{{ error }}</p>
-    
-    <div v-if="result" class="result">
-      <h3>Monthly Net Salary: {{ result.monthlyNetSalary.toLocaleString() }} SEK</h3>
-      <p>Effective Tax Rate: {{ result.effectiveTaxRate }}%</p>
-    </div>
-  </form>
-</template>
-```
-
----
-
-## Municipality Dropdown
-
-```typescript
-// composables/useMunicipalities.ts
-import { ref, onMounted } from 'vue'
-
-interface Municipality {
-  id: string
-  name: string
-  code: string
-  municipalTaxRate: number
-  regionName: string
-}
-
-export function useMunicipalities() {
-  const municipalities = ref<Municipality[]>([])
-  const loading = ref(true)
-
-  onMounted(async () => {
-    const response = await fetch('http://localhost:8081/gateway/municipalities')
-    municipalities.value = await response.json()
-    loading.value = false
-  })
-
-  return { municipalities, loading }
-}
-```
-
-```vue
-<!-- components/MunicipalitySelect.vue -->
-<script setup lang="ts">
-import { useMunicipalities } from '@/composables/useMunicipalities'
-
-const modelValue = defineModel<string>()
-const { municipalities, loading } = useMunicipalities()
-</script>
-
-<template>
-  <select v-model="modelValue" :disabled="loading">
-    <option v-if="loading" value="">Loading...</option>
-    <template v-else>
-      <option value="">Select municipality...</option>
-      <option v-for="m in municipalities" :key="m.id" :value="m.id">
-        {{ m.name }} ({{ m.regionName }}) - {{ m.municipalTaxRate }}%
-      </option>
-    </template>
-  </select>
-</template>
-```
-
----
-
-## Development Setup
-
-### CORS
-
-The backend allows CORS from localhost during development. For production, configure appropriate origins.
-
-### Health Check
-
-```javascript
-// Check if gateway is running (requires MuleSoft runtime)
-// For backend health, use port 8080 directly
-const health = await fetch('http://localhost:8080/api/v1/actuator/health');
-const status = await health.json();
-console.log(status); // { "status": "UP" }
-```
-
----
-
-## Response Field Reference
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `grossMonthlySalary` | number | Input: Monthly salary before tax |
-| `grossYearlySalary` | number | Yearly gross (monthly × 12) |
-| `municipalityName` | string | Name of selected municipality |
-| `regionName` | string | Name of region (län) |
-| `taxableIncome` | number | Income after basic deduction |
-| `basicDeduction` | number | Grundavdrag |
-| `municipalTax` | number | Kommunalskatt (yearly) |
-| `regionalTax` | number | Landstingsskatt (yearly) |
-| `stateTax` | number | Statlig skatt (yearly) |
-| `burialFee` | number | Begravningsavgift (yearly) |
-| `churchFee` | number | Kyrkoavgift if member (yearly) |
-| `totalTaxBeforeCredit` | number | Sum of all taxes |
-| `jobTaxCredit` | number | Jobbskatteavdrag (yearly) |
-| `totalTaxAfterCredit` | number | Final tax amount |
-| `yearlyNetSalary` | number | Net income per year |
-| `monthlyNetSalary` | number | Net income per month |
-| `effectiveTaxRate` | number | Percentage of gross paid in tax |
-| `municipalTaxRate` | number | Municipal tax rate % |
-| `regionalTaxRate` | number | Regional tax rate % |
-
----
-
-## Tips
-
-1. **Cache municipality data** - It rarely changes, fetch once on app load
-2. **Show loading states** - Tax calculation takes ~100-500ms
-3. **Format currency** - Use `toLocaleString('sv-SE')` for Swedish formatting
-4. **Validate input** - Ensure salary is positive before sending
-
----
 
 *Last Updated: 2025-12-30*

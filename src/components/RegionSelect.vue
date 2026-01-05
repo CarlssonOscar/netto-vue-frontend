@@ -9,6 +9,7 @@ const modelValue = defineModel<string | null>({ default: null })
 const props = defineProps<{
   disabled?: boolean
   ariaLabel?: string
+  placeholder?: string
 }>()
 
 const store = useMunicipalityStore()
@@ -43,7 +44,7 @@ const onClear = () => {
     v-model="selectedRegion"
     :suggestions="filteredSuggestions"
     optionLabel="name"
-    placeholder="Alla regioner"
+    :placeholder="props.placeholder ?? 'Alla regioner'"
     @complete="search"
     @clear="onClear"
     dropdown

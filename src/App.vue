@@ -7,7 +7,7 @@ import Toolbar from 'primevue/toolbar'
     <header>
       <Toolbar class="app-toolbar">
         <template #start>
-          <span class="app-title">Netto</span>
+          <span class="app-title">Nettolön 2026</span>
         </template>
       </Toolbar>
     </header>

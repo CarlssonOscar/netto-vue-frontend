@@ -6,25 +6,41 @@ export interface TaxRequest {
 }
 
 export interface TaxResult {
-  grossMonthlySalary: number
-  grossYearlySalary: number
+  // Identifiering
+  municipalityId: string
   municipalityName: string
   regionName: string
-  taxableIncome: number
-  basicDeduction: number
-  municipalTax: number
-  regionalTax: number
-  stateTax: number
-  burialFee: number
-  churchFee: number
-  totalTaxBeforeCredit: number
-  jobTaxCredit: number
-  totalTaxAfterCredit: number
-  yearlyNetSalary: number
-  monthlyNetSalary: number
-  effectiveTaxRate: number
+
+  // Inkomst
+  grossMonthlySalary: number
+  grossYearlySalary: number
+
+  // Skattesatser (decimal, t.ex. 0.228 = 22.8%)
   municipalTaxRate: number
   regionalTaxRate: number
+  stateTaxRate: number
+  burialFeeRate: number
+  churchFeeRate: number
+
+  // Avdrag (årsvärden)
+  yearlyBasicDeduction: number
+  yearlyJobTaxCredit: number
+
+  // Beräknade skatter (årsvärden)
+  yearlyTaxableIncome: number
+  yearlyMunicipalTax: number
+  yearlyRegionalTax: number
+  yearlyStateTax: number
+  yearlyBurialFee: number
+  yearlyChurchFee: number
+  yearlyTotalTax: number
+
+  // Månadsvärden
+  monthlyTotalTax: number
+  netMonthlySalary: number
+
+  // Summering
+  effectiveTaxRate: number
 }
 
 export interface Region {

@@ -21,12 +21,6 @@ const isPensioner = ref(false)
 // Spårar om användaren har försökt skicka formuläret
 const submitted = ref(false)
 
-const viewOptions = [
-  { label: 'Månad', value: 'month' },
-  { label: 'År', value: 'year' }
-]
-const selectedViews = ref(['month', 'year'])
-
 // Valideringsmeddelanden
 const validationErrors = computed(() => ({
   municipality: !municipalityId.value ? 'Obligatoriskt fält' : null,

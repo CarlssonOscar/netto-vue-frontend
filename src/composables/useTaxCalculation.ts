@@ -1,7 +1,6 @@
 import { ref, readonly } from 'vue'
 import type { TaxRequest, TaxResult } from '@/types/tax'
-
-const API_BASE_URL = '/api/v1'
+import { apiConfig } from '@/config/api'
 
 export function useTaxCalculation() {
   const result = ref<TaxResult | null>(null)
@@ -13,7 +12,7 @@ export function useTaxCalculation() {
     error.value = null
 
     try {
-      const response = await fetch(`${API_BASE_URL}/tax/calculate`, {
+      const response = await fetch(apiConfig.endpoints.taxCalculate, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request)

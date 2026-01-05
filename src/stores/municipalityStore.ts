@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Municipality, Region } from '@/types/tax'
-
-const API_BASE_URL = '/api/v1'
+import { apiConfig } from '@/config/api'
 
 export const useMunicipalityStore = defineStore('municipality', () => {
   // State
@@ -52,7 +51,7 @@ export const useMunicipalityStore = defineStore('municipality', () => {
     error.value = null
 
     try {
-      const response = await fetch(`${API_BASE_URL}/municipalities`)
+      const response = await fetch(apiConfig.endpoints.municipalities)
 
       if (!response.ok) {
         throw new Error('Kunde inte hämta kommuner')

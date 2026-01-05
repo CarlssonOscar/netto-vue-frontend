@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import AutoComplete from 'primevue/autocomplete'
 import { useMunicipalityStore } from '@/stores/municipalityStore'
 import type { Municipality } from '@/types/tax'

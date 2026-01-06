@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import AutoComplete from 'primevue/autocomplete'
 import { useMunicipalityStore } from '@/stores/municipalityStore'
 import { formatName } from '@/utils/formatters'
@@ -18,6 +18,15 @@ const store = useMunicipalityStore()
 const selectedMunicipality = ref<Municipality | null>(null)
 const filteredSuggestions = ref<Municipality[]>([])
 
+// Use local filtering based on prop regionId, not store's global selectedRegionId
+const availableMunicipalities = computed(() => {
+  let filtered = store.municipalities
+  if (props.regionId) {
+    filtered = filtered.filter((m) => m.region.id === props.regionId)
+  }
+  return [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'sv'))
+})
+
 watch(
   () => props.regionId,
   () => {
@@ -32,7 +41,7 @@ watch(
     if (!newId) {
       selectedMunicipality.value = null
     } else {
-      const found = store.filteredMunicipalities.find(m => m.id === newId)
+      const found = availableMunicipalities.value.find(m => m.id === newId)
       if (found && selectedMunicipality.value?.id !== found.id) {
         selectedMunicipality.value = found
       }
@@ -42,7 +51,7 @@ watch(
 
 const search = (event: { query: string }) => {
   const query = event.query.toLowerCase()
-  filteredSuggestions.value = store.filteredMunicipalities.filter(m =>
+  filteredSuggestions.value = availableMunicipalities.value.filter(m =>
     m.name.toLowerCase().includes(query)
   )
 }

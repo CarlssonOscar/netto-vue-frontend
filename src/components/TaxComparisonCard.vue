@@ -2,7 +2,7 @@
 import Card from 'primevue/card'
 import Divider from 'primevue/divider'
 import type { TaxResult } from '@/types/tax'
-import { formatPercent, formatDiff, getDiff } from '@/utils/formatters'
+import { formatPercent, formatCurrency, getDiff } from '@/utils/formatters'
 
 const props = defineProps<{
   primaryResult: TaxResult
@@ -13,6 +13,9 @@ const props = defineProps<{
 // For taxes: negative diff is good (green, means paying less)
 const getNetSalaryClass = (diff: number) => diff >= 0 ? 'diff-positive' : 'diff-negative'
 const getTaxClass = (diff: number) => diff <= 0 ? 'diff-positive' : 'diff-negative'
+
+// Get sign character for a diff value
+const getSign = (diff: number) => diff >= 0 ? '+' : '−'
 </script>
 
 <template>
@@ -22,42 +25,39 @@ const getTaxClass = (diff: number) => diff <= 0 ? 'diff-positive' : 'diff-negati
       <div class="result-content">
         <div class="result-highlight">
           <span>Nettolön</span>
-          <span 
-            class="highlight-value" 
-            :class="getNetSalaryClass(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary))"
-          >
-            {{ formatDiff(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary)) }} kr
+          <span class="highlight-value">
+            <span class="sign">{{ getSign(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary)) }}</span>{{ formatCurrency(Math.abs(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary))) }} kr
           </span>
         </div>
         <div class="result-row">
           <span>Kommunalskatt</span>
           <span :class="getTaxClass(getDiff(primaryResult.yearlyMunicipalTax, compareResult.yearlyMunicipalTax))">
-            {{ formatDiff(-getDiff(primaryResult.yearlyMunicipalTax / 12, compareResult.yearlyMunicipalTax / 12)) }} kr
+            <span class="sign">{{ getSign(-getDiff(primaryResult.yearlyMunicipalTax / 12, compareResult.yearlyMunicipalTax / 12)) }}</span>{{ formatCurrency(Math.abs(getDiff(primaryResult.yearlyMunicipalTax / 12, compareResult.yearlyMunicipalTax / 12))) }} kr
           </span>
         </div>
         <div class="result-row">
           <span>Regionskatt</span>
           <span :class="getTaxClass(getDiff(primaryResult.yearlyRegionalTax, compareResult.yearlyRegionalTax))">
-            {{ formatDiff(-getDiff(primaryResult.yearlyRegionalTax / 12, compareResult.yearlyRegionalTax / 12)) }} kr
+            <span class="sign">{{ getSign(-getDiff(primaryResult.yearlyRegionalTax / 12, compareResult.yearlyRegionalTax / 12)) }}</span>{{ formatCurrency(Math.abs(getDiff(primaryResult.yearlyRegionalTax / 12, compareResult.yearlyRegionalTax / 12))) }} kr
           </span>
         </div>
         <div class="result-row">
           <span>Total skatt</span>
           <span :class="getTaxClass(getDiff(primaryResult.monthlyTotalTax, compareResult.monthlyTotalTax))">
-            {{ formatDiff(-getDiff(primaryResult.monthlyTotalTax, compareResult.monthlyTotalTax)) }} kr
+            <span class="sign">{{ getSign(-getDiff(primaryResult.monthlyTotalTax, compareResult.monthlyTotalTax)) }}</span>{{ formatCurrency(Math.abs(getDiff(primaryResult.monthlyTotalTax, compareResult.monthlyTotalTax))) }} kr
           </span>
         </div>
         <Divider />
         <div class="result-row">
           <span>Effektiv skatt</span>
           <span :class="getTaxClass(getDiff(primaryResult.effectiveTaxRate, compareResult.effectiveTaxRate))">
-            {{ getDiff(primaryResult.effectiveTaxRate, compareResult.effectiveTaxRate) > 0 ? '+' : '' }}{{ formatPercent(getDiff(primaryResult.effectiveTaxRate, compareResult.effectiveTaxRate) * 100) }}%
+            <span class="sign">{{ getSign(getDiff(primaryResult.effectiveTaxRate, compareResult.effectiveTaxRate)) }}</span>{{ formatPercent(Math.abs(getDiff(primaryResult.effectiveTaxRate, compareResult.effectiveTaxRate)) * 100) }}%
           </span>
         </div>
         <div class="result-row yearly-note">
           <span>Skillnad per år</span>
           <span :class="getNetSalaryClass(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary))">
-            {{ formatDiff(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary) * 12) }} kr
+            <span class="sign">{{ getSign(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary) * 12) }}</span>{{ formatCurrency(Math.abs(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary) * 12)) }} kr
           </span>
         </div>
       </div>
@@ -124,6 +124,7 @@ const getTaxClass = (diff: number) => diff <= 0 ? 'diff-positive' : 'diff-negati
 .highlight-value {
   font-size: 1.1rem;
   font-weight: 700;
+  color: var(--p-primary-color);
 }
 
 .result-row {
@@ -151,6 +152,13 @@ const getTaxClass = (diff: number) => diff <= 0 ? 'diff-positive' : 'diff-negati
 .diff-negative {
   color: var(--p-red-500) !important;
   font-weight: 600;
+}
+
+.sign {
+  display: inline-block;
+  position: relative;
+  top: 2px;
+  margin-right: 3px;
 }
 
 .yearly-note {

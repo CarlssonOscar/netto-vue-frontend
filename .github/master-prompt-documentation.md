@@ -2,7 +2,7 @@
 
 > **Purpose**: This document contains the master prompt used to generate or update `docs/system-overview.md`.  
 > **Usage**: Use this prompt when creating comprehensive system documentation or when major architectural changes require documentation updates.  
-> **Last Updated**: `2025-11-27`
+> **Last Updated**: `2026-01-06`
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## Overview
 
-You are tasked with creating high-level system documentation for **Behandlingsoversikt**.  
+You are tasked with creating high-level system documentation for **NettoFrontend**.  
 Generate or update a `docs/system-overview.md` file that remains stable over time by focusing on architectural concepts rather than implementation details.
 
 ---
@@ -197,7 +197,7 @@ For major decisions, document:
 - Business concepts unique to this system
 
 **What to include:**
-- Terms that are non-obvious to new team members
+-- Terms that are non-obvious to new team members
 - Acronyms used throughout documentation
 - Domain concepts with specific meaning in this context
 
@@ -236,10 +236,10 @@ The following sections are **NOT needed** as they create maintenance burden with
 ### The "Stability Test"
 Before adding detail, ask: **"Will this still be true in 6 months?"**
 
-- ✅ **Stable**: "Uses Clean Architecture with dependency inversion"
-- ✅ **Stable**: "Blazor Server chosen for real-time updates via SignalR"
-- ❌ **Unstable**: "MudBlazor version 8.5.1 for UI components"
-- ❌ **Unstable**: "PatientService has 12 public methods"
+- ✅ **Stable**: "Uses Composition API with composables for shared logic"
+- ✅ **Stable**: "Pinia chosen for global state management"
+- ❌ **Unstable**: "PrimeVue version 4.5.4 for UI components"
+- ❌ **Unstable**: "useTaxCalculation has 4 public methods"
 
 ### When to Update Documentation
 
@@ -277,87 +277,100 @@ Before adding detail, ask: **"Will this still be true in 6 months?"**
 #### 1. Architecture and Component Relationships
 ```mermaid
 graph TD
-    UI[UI Layer] --> App[Application Layer]
-    App --> Domain[Domain]
-    App --> Infra[Infrastructure]
-    Infra --> Domain
+    Browser[Browser] --> Vue[Vue App]
+    Vue --> Components[Components]
+    Vue --> Composables[Composables]
+    Vue --> Stores[Pinia Stores]
+    Composables --> API[API Gateway]
+    API --> Backend[Backend Services]
 ```
-**Purpose:** Show layer dependencies and boundaries
+**Purpose:** Show frontend architecture and API communication
 
-#### 2. Entity Relationships (Conceptual)
+#### 2. Data Model Relationships (Conceptual)
 ```mermaid
 erDiagram
-    PATIENT ||--o{ TREATMENT : has
-    TREATMENT }o--|| USER : "assigned to"
+    REGION ||--o{ MUNICIPALITY : contains
+    MUNICIPALITY ||--o{ TAX_CALCULATION : "used in"
 ```
 **Purpose:** Show domain model relationships, not exact schema
 
 #### 3. Sequence Diagrams for Key Flows
 ```mermaid
 sequenceDiagram
-    User->>UI: Search Patient
-    UI->>Service: SearchPatients(query)
-    Service->>Database: Execute query
-    Database-->>Service: Results
-    Service-->>UI: PatientDtos
-    UI-->>User: Display results
+    User->>Form: Enter salary & municipality
+    Form->>Composable: calculate(request)
+    Composable->>API Gateway: POST /tax/calculate
+    API Gateway->>Backend: Forward request
+    Backend-->>API Gateway: TaxResult
+    API Gateway-->>Composable: Response
+    Composable-->>ResultCard: Update result ref
+    ResultCard-->>User: Display net salary
 ```
 **Purpose:** Show interactions for critical scenarios
 
 #### 4. Component Dependencies
 ```mermaid
 graph LR
-    PatientService --> PatientRepository
-    PatientService --> TreatmentService
-    TreatmentService --> TreatmentRepository
+    TaxCalculator --> TaxCalculatorForm
+    TaxCalculator --> TaxResultCard
+    TaxCalculator --> TaxComparisonCard
+    TaxCalculatorForm --> RegionSelect
+    TaxCalculatorForm --> MunicipalitySelect
+    TaxCalculator --> useTaxCalculation
+    MunicipalitySelect --> municipalityStore
 ```
-**Purpose:** Show service dependencies and separation of concerns
+**Purpose:** Show component hierarchy and composable usage
 
 **What to avoid in diagrams:**
-- ❌ Every method on every class
-- ❌ Database foreign key constraints
-- ❌ Complete class hierarchies
-- ❌ Implementation details (caching, error handling)
+- ❌ Every prop on every component
+- ❌ CSS class names or styling details
+- ❌ Complete TypeScript interfaces
+- ❌ Implementation details (validation logic, error handling)
 
 ---
 
 ## Project-Specific Context
 
-### Technology Stack for Behandlingsoversikt
-- **Framework**: .NET 9
-- **UI Framework**: Blazor Server (SignalR-based, not WebAssembly)
-- **Architecture**: Clean Architecture / Onion Architecture
-- **Authentication**: Windows Authentication via Active Directory
-- **Database**: SQL Server with EF Core
+### Technology Stack for NettoFrontend
+- **Framework**: Vue 3 with TypeScript
+- **UI Framework**: PrimeVue component library
+- **State Management**: Pinia stores
+- **Build Tool**: Vite
+- **Routing**: Vue Router
+- **Architecture**: Component-based with Composition API and composables
 
-**For specific package versions:** See `.csproj` files in each project
+**For specific package versions:** See `package.json`
 
 ### Project Structure
-- `Behandlingsoversikt.UI` - Presentation layer (Blazor components, pages)
-- `Behandlingsoversikt.Application` - Business logic, services, DTOs
-- `Behandlingsoversikt.Infrastructure` - Data access, repositories, EF Core
-- `Behandlingsoversikt.Application.UnitTest` - Unit tests
-- `Behandlingsoversikt.IntegrationTest` - Integration tests
+- `src/components/` - Reusable Vue components (TaxCalculator, TaxResultCard, etc.)
+- `src/composables/` - Shared reactive logic (useTaxCalculation, useFormValidation)
+- `src/stores/` - Pinia stores for global state (municipalityStore)
+- `src/views/` - Page-level components (Home, About)
+- `src/types/` - TypeScript interfaces and types
+- `src/utils/` - Pure utility functions (formatters)
+- `src/config/` - API configuration
+- `src/router/` - Vue Router configuration
 
 ### Key Architectural Decisions to Document
-1. **Why Blazor Server?** (vs WebAssembly, MVC, etc.)
-2. **Why separate search service?** (PatientSearchService vs PatientService)
-3. **Why Clean Architecture?** (benefits and trade-offs for this project)
-4. **Why Windows Authentication?** (vs custom auth, OAuth)
-5. **Treatment step progression approach** (UI-only vs persisted state)
+1. **Why Vue 3 Composition API?** (vs Options API, React, etc.)
+2. **Why PrimeVue?** (vs Vuetify, Element Plus, custom components)
+3. **Why Pinia over Vuex?** (simpler API, better TypeScript support)
+4. **Why composables pattern?** (reusability, separation of concerns)
+5. **Why API Gateway pattern?** (single entry point, CORS handling)
 
 ### Key Domain Concepts
-- **Patient** - Central entity with treatments
-- **Treatment Lifecycle** - 4-step progression (Coding → Scheduling → Planning → Completed)
-- **User Roles** - Admin, Careadmin, Student with different permissions
-- **Audit Trail** - Compliance tracking for data access and changes
-- **User Impersonation** - Support feature for admins
+- **Region** - Swedish region (län), contains municipalities
+- **Municipality** - Swedish municipality (kommun) with tax rates
+- **Tax Calculation** - Core business logic: gross salary → net salary
+- **Tax Components** - Municipal tax, regional tax, state tax, burial fee, church fee
+- **Tax Deductions** - Basic deduction (grundavdrag), job tax credit (jobbskatteavdrag)
+- **Compare Mode** - Feature to compare net salary between two municipalities
 
 ### Integration Points to Document
-- Active Directory (vll.se domain) for authentication
-- SQL Server database for persistence
-- SignalR for real-time Blazor Server communication
-- No external APIs or message queues
+- **API Gateway** - Spring Boot gateway on port 8080 (handles CORS, routing)
+- **Backend API** - Tax calculation service on port 8181 (never called directly)
+- **REST endpoints**: `/regions`, `/municipalities`, `/tax/calculate`
+- No authentication currently (public calculator)
 
 ---
 
@@ -402,41 +415,42 @@ Generate or update `docs/system-overview.md` that:
 ### Example Section Structure
 
 ```markdown
-## Authentication & Authorization
+## API Integration
 
 ### Approach
-Windows Authentication via Active Directory (Negotiate/Kerberos).
+All API calls go through a centralized API Gateway on port 8080.
 
 ### Why This Choice
-- **Requirement**: Integration with existing enterprise AD (vll.se domain)
-- **Benefit**: Single sign-on for domain users, no password management
-- **Trade-off**: Requires domain-joined machines, not suitable for external users
+- **Requirement**: CORS handling for browser-based SPA
+- **Benefit**: Single entry point, easier to manage in development
+- **Trade-off**: Extra network hop, but simplifies frontend configuration
 
 ### How It Works
-1. User authenticates via Windows credentials
-2. Claims transformation adds roles from database
-3. Authorization via `[Authorize]` attribute with roles
+1. Frontend makes request to API Gateway (port 8080)
+2. Gateway routes to appropriate backend service
+3. Response flows back through gateway
+4. Frontend composables handle loading/error states
 
-**For configuration details:** See `appsettings.json` and `AuthenticationExtensions.cs`
+**For endpoint details:** See `docs/frontend-integration-guide.md`
 
-### Impersonation Feature
-Admins can impersonate other users for support purposes.
-- State stored in `IMemoryCache` (30-minute TTL)
-- Original user context preserved
-- AD validation required for security
+### Composable Pattern
+API calls are wrapped in composables for reusability.
+- Loading and error states handled consistently
+- Results are readonly refs to prevent accidental mutation
+- Parallel requests via Promise.all for compare mode
 
-**Design decision:** Cache-based instead of session-based for stateless support.
+**Design decision:** Composables over direct fetch calls for testability and reuse.
 ```
 
 **Notice:**
-- ✅ Explains WHY Windows Auth was chosen
+- ✅ Explains WHY API Gateway pattern was chosen
 - ✅ Documents trade-offs honestly
 - ✅ Shows flow conceptually
 - ✅ References config files instead of duplicating
 - ✅ Focuses on design decisions
-- ❌ Doesn't list all method signatures
-- ❌ Doesn't show exact cache keys
-- ❌ Doesn't duplicate configuration values
+- ❌ Doesn't list all endpoints
+- ❌ Doesn't show exact request/response formats
+- ❌ Doesn't duplicate API documentation
 
 ---
 
@@ -456,9 +470,9 @@ Admins can impersonate other users for support purposes.
 - Design trade-offs not explained
 
 ### What NOT to Update
-- Package version changes (reference .csproj instead)
+- Package version changes (reference package.json instead)
 - Method signature changes (code is source of truth)
-- Configuration value changes (reference config files)
+- Configuration value changes (reference .env files)
 - Minor refactoring (doesn't affect architecture)
 - Bug fixes (unless they expose design issues)
 
@@ -469,7 +483,7 @@ Admins can impersonate other users for support purposes.
 
 ---
 
-**Version**: `2.0`  
-**Last Updated**: `2025-11-27`  
-**Maintained By**: `RegVastOscar`  
-**Philosophy Change**: Shifted from comprehensive detail to stable architectural concepts
+**Version**: `2.1`  
+**Last Updated**: `2026-01-06`  
+**Maintained By**: `CarlssonOscar`  
+**Philosophy Change**: Adapted for Vue 3 frontend project

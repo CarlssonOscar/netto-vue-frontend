@@ -16,7 +16,6 @@ const store = useMunicipalityStore()
 const selectedRegion = ref<Region | null>(null)
 const filteredSuggestions = ref<Region[]>([])
 
-// Sync with store
 watch(
   () => selectedRegion.value,
   (newValue) => {

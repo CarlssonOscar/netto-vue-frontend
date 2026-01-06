@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import InputNumber from 'primevue/inputnumber'
+import { ref, watch, computed } from 'vue'
+import InputText from 'primevue/inputtext'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -25,9 +25,61 @@ const emit = defineEmits<{
 // Form state
 const selectedRegionId = ref<string | null>(null)
 const municipalityId = ref('')
-const grossMonthlySalary = ref<number | null>(null)
+const salaryInput = ref('')
 const churchMember = ref(false)
 const isPensioner = ref(false)
+
+// Format salary input with Swedish thousand separators
+const formatSalaryInput = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  // Get cursor position before formatting
+  const cursorPos = input.selectionStart || 0
+  const oldLength = input.value.length
+  
+  // Remove all non-digits
+  const digits = input.value.replace(/\D/g, '')
+  
+  // Format with thousand separators
+  if (digits) {
+    const formatted = parseInt(digits, 10).toLocaleString('sv-SE')
+    salaryInput.value = formatted
+    
+    // Adjust cursor position after formatting
+    const newLength = formatted.length
+    const diff = newLength - oldLength
+    const newCursorPos = Math.max(0, cursorPos + diff)
+    
+    // Set cursor position after Vue updates the DOM
+    requestAnimationFrame(() => {
+      input.setSelectionRange(newCursorPos, newCursorPos)
+    })
+  } else {
+    salaryInput.value = ''
+  }
+}
+
+// Prevent non-numeric input
+const handleKeydown = (event: KeyboardEvent) => {
+  // Allow: backspace, delete, tab, escape, enter, arrows, home, end
+  const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
+  if (allowedKeys.includes(event.key)) {
+    return
+  }
+  // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+  if (event.ctrlKey && ['a', 'c', 'v', 'x'].includes(event.key.toLowerCase())) {
+    return
+  }
+  // Block non-numeric keys
+  if (!/^\d$/.test(event.key)) {
+    event.preventDefault()
+  }
+}
+
+// Get the numeric value for API calls
+const grossMonthlySalary = computed(() => {
+  const digits = salaryInput.value.replace(/\D/g, '')
+  return digits ? parseInt(digits, 10) : null
+})
 
 // Compare mode state
 const compareMode = ref(false)
@@ -59,7 +111,7 @@ const handleReset = () => {
   // Clear all form fields
   selectedRegionId.value = null
   municipalityId.value = ''
-  grossMonthlySalary.value = null
+  salaryInput.value = ''
   churchMember.value = false
   isPensioner.value = false
   compareMode.value = false
@@ -110,16 +162,15 @@ const handleSubmit = () => {
           aria-label="Välj kommun"
         />
 
-        <InputNumber
-          v-model="grossMonthlySalary"
-          :min="0"
-          :max="10000000"
+        <InputText
+          v-model="salaryInput"
+          @input="formatSalaryInput"
+          @keydown="handleKeydown"
           :placeholder="submitted && validationErrors.salary ? 'Bruttolön per månad (SEK) *' : 'Bruttolön per månad (SEK)'"
-          class="w-full"
-          locale="sv-SE"
-          :maxFractionDigits="0"
+          class="w-full salary-input"
           :class="{ 'p-invalid': submitted && validationErrors.salary }"
           :disabled="hasResult"
+          inputmode="numeric"
           aria-label="Bruttolön per månad i svenska kronor"
         />
 
@@ -229,8 +280,8 @@ const handleSubmit = () => {
   gap: 0.75rem;
 }
 
-/* Underline style for inputs (except InputNumber) */
-.form-content :deep(.p-inputtext:not(.p-inputnumber-input)),
+/* Underline style for inputs */
+.form-content :deep(.p-inputtext:not(.salary-input)),
 .form-content :deep(.p-select),
 .form-content :deep(.p-autocomplete-input) {
   background: transparent;
@@ -241,50 +292,21 @@ const handleSubmit = () => {
   color: #333333;
 }
 
-/* Full border for InputNumber */
-.form-content :deep(.p-inputnumber) {
+/* Full border style for salary input */
+.form-content :deep(.salary-input) {
   background: transparent !important;
-  background-color: transparent !important;
-}
-
-.form-content :deep(.p-inputnumber-input) {
-  background: transparent !important;
-  background-color: transparent !important;
   border: 1px solid rgba(0, 0, 0, 0.2) !important;
   border-radius: 6px !important;
   padding: 0.5rem !important;
+  color: #333333;
 }
 
-.form-content :deep(.p-inputnumber-input:enabled:focus),
-.form-content :deep(.p-inputnumber-input:enabled:hover),
-.form-content :deep(.p-inputnumber-input:focus),
-.form-content :deep(.p-inputnumber-input:hover) {
+.form-content :deep(.salary-input:focus),
+.form-content :deep(.salary-input:hover) {
   background: transparent !important;
-  background-color: transparent !important;
   box-shadow: none !important;
   outline: none !important;
   border-color: rgba(0, 0, 0, 0.4) !important;
-}
-
-.form-content :deep(.p-inputnumber .p-inputtext),
-.form-content :deep(.p-inputnumber .p-inputtext:focus),
-.form-content :deep(.p-inputnumber .p-inputtext:hover) {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-/* Remove PrimeVue focus ring on InputNumber */
-.form-content :deep(.p-inputnumber.p-focus),
-.form-content :deep(.p-inputnumber:focus-within) {
-  box-shadow: none !important;
-  outline: none !important;
-}
-
-.form-content :deep(.p-inputnumber .p-inputtext:focus) {
-  box-shadow: none !important;
-  outline: none !important;
 }
 
 .form-content :deep(.p-autocomplete) {

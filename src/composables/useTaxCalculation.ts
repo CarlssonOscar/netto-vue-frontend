@@ -28,13 +28,18 @@ export function useTaxCalculation() {
     error.value = null
 
     try {
-      const data = await calculateSingle(request)
-      result.value = data
-
       if (compareRequest) {
-        const compareData = await calculateSingle(compareRequest)
+        // Run both calculations in parallel, then update state together
+        const [primaryData, compareData] = await Promise.all([
+          calculateSingle(request),
+          calculateSingle(compareRequest)
+        ])
+        result.value = primaryData
         compareResult.value = compareData
       } else {
+        // Single calculation
+        const data = await calculateSingle(request)
+        result.value = data
         compareResult.value = null
       }
     } catch (e) {

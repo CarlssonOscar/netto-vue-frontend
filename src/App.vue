@@ -7,7 +7,7 @@
         <header>
             <Toolbar class="app-toolbar">
                 <template #start>
-                    <span class="app-title">Nettolön 2026</span>
+                    <span class="app-title">Nettolön</span>
                 </template>
             </Toolbar>
         </header>

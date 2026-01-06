@@ -17,7 +17,7 @@ export function useTaxCalculation() {
 
     if (!response.ok) {
       const err = await response.json()
-      throw new Error(err.messages?.join(', ') || 'Beräkningen misslyckades')
+      throw new Error(err.messages?.join(', ') || 'Calculation failed')
     }
 
     return response.json()
@@ -29,18 +29,16 @@ export function useTaxCalculation() {
 
     try {
       const data = await calculateSingle(request)
-      console.log('Tax calculation result:', data)
       result.value = data
 
       if (compareRequest) {
         const compareData = await calculateSingle(compareRequest)
-        console.log('Compare calculation result:', compareData)
         compareResult.value = compareData
       } else {
         compareResult.value = null
       }
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Ett oväntat fel uppstod'
+      error.value = e instanceof Error ? e.message : 'An unexpected error occurred'
       result.value = null
       compareResult.value = null
     } finally {

@@ -4,14 +4,12 @@ import type { Municipality, Region } from '@/types/tax'
 import { apiConfig } from '@/config/api'
 
 export const useMunicipalityStore = defineStore('municipality', () => {
-  // State
   const municipalities = ref<Municipality[]>([])
   const selectedRegionId = ref<string | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const hasFetched = ref(false)
 
-  // Getters
   const regions = computed<Region[]>(() => {
     const regionMap = new Map<string, Region>()
     municipalities.value.forEach((m) => {
@@ -37,7 +35,6 @@ export const useMunicipalityStore = defineStore('municipality', () => {
   const getMunicipalityById = (id: string) =>
     municipalities.value.find((m) => m.id === id)
 
-  // Actions
   const setSelectedRegion = (regionId: string | null) => {
     selectedRegionId.value = regionId
   }
@@ -54,13 +51,13 @@ export const useMunicipalityStore = defineStore('municipality', () => {
       const response = await fetch(apiConfig.endpoints.municipalities)
 
       if (!response.ok) {
-        throw new Error('Kunde inte hämta kommuner')
+        throw new Error('Failed to fetch municipalities')
       }
 
       municipalities.value = await response.json()
       hasFetched.value = true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Ett oväntat fel uppstod'
+      error.value = e instanceof Error ? e.message : 'An unexpected error occurred'
     } finally {
       loading.value = false
     }

@@ -6,27 +6,27 @@ export interface TaxRequest {
 }
 
 export interface TaxResult {
-  // Identifiering
+  // Identification
   municipalityId: string
   municipalityName: string
   regionName: string
 
-  // Inkomst
+  // Income
   grossMonthlySalary: number
   grossYearlySalary: number
 
-  // Skattesatser (decimal, t.ex. 0.228 = 22.8%)
+  // Tax rates (decimal, e.g. 0.228 = 22.8%)
   municipalTaxRate: number
   regionalTaxRate: number
   stateTaxRate: number
   burialFeeRate: number
   churchFeeRate: number
 
-  // Avdrag (årsvärden)
+  // Deductions (yearly values)
   yearlyBasicDeduction: number
   yearlyJobTaxCredit: number
 
-  // Beräknade skatter (årsvärden)
+  // Calculated taxes (yearly values)
   yearlyTaxableIncome: number
   yearlyMunicipalTax: number
   yearlyRegionalTax: number
@@ -35,11 +35,11 @@ export interface TaxResult {
   yearlyChurchFee: number
   yearlyTotalTax: number
 
-  // Månadsvärden
+  // Monthly values
   monthlyTotalTax: number
   netMonthlySalary: number
 
-  // Summering
+  // Summary
   effectiveTaxRate: number
 }
 

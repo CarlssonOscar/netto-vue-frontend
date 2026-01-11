@@ -58,15 +58,3 @@ h3 {
   min-height: 100vh;
 }
 
-/* Dropdown arrow rotation - pointing left when closed, down when open */
-.p-autocomplete-dropdown svg,
-.p-autocomplete-dropdown .p-icon {
-  transform: rotate(90deg);
-  transition: transform 0.2s ease;
-}
-
-/* Rotate back to point down when dropdown is open */
-.p-autocomplete-open .p-autocomplete-dropdown svg,
-.p-autocomplete-open .p-autocomplete-dropdown .p-icon {
-  transform: rotate(-180deg);
-}

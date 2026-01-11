@@ -320,11 +320,12 @@ const handleSubmit = () => {
 }
 
 .form-content :deep(.p-autocomplete-dropdown .p-icon) {
+  transform: rotate(90deg);
   transition: transform 0.3s ease;
 }
 
 .form-content :deep(.p-autocomplete-dropdown[aria-expanded='true'] .p-icon) {
-  transform: rotate(180deg);
+  transform: rotate(0deg);
 }
 
 .form-content :deep(.p-autocomplete-dropdown:not(:disabled):active),

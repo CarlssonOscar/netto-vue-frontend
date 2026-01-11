@@ -3,7 +3,7 @@
 > **Purpose**: API integration reference for Vue 3 + TypeScript + PrimeVue  
 > **Backend**: Spring Boot 3.x, Java 21  
 > **Tax Year**: 2026 (SKV 433)  
-> **Last Updated**: 2026-01-05
+> **Last Updated**: 2026-01-11
 
 ---
 
@@ -11,15 +11,15 @@
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/v1/regions` | Alla regioner (21 st) |
-| `GET` | `/api/v1/municipalities` | Alla kommuner (290 st) |
-| `GET` | `/api/v1/municipalities/by-region/{regionId}` | Kommuner i vald region |
-| `POST` | `/api/v1/tax/calculate` | Beräkna nettolön (med UUID) |
-| `GET` | `/api/v1/tax/calculate-by-code` | Beräkna nettolön (med kommunkod) |
+| `GET` | `/api/v1/regions` | All regions (21 total) |
+| `GET` | `/api/v1/municipalities` | All municipalities (290 total) |
+| `GET` | `/api/v1/municipalities/by-region/{regionId}` | Municipalities in selected region |
+| `POST` | `/api/v1/tax/calculate` | Calculate net salary (with UUID) |
+| `GET` | `/api/v1/tax/calculate-by-code` | Calculate net salary (with municipality code) |
 
 **Base URL**: `http://localhost:8080/api/v1`
 
-> ⚠️ **OBS**: All kommunikation sker via API Gateway på port 8080. Backend-tjänsten körs internt på port 8181 men ska aldrig anropas direkt från frontend.
+> ⚠️ **NOTE**: All communication goes through the API Gateway on port 8080. The backend service runs internally on port 8181 but should never be called directly from frontend.
 
 **OpenAPI**: `GET /api/v1/api-docs`
 
@@ -50,7 +50,7 @@ export interface TaxCalculationRequest {
   isPensioner?: boolean;        // Default: false
 }
 
-// Alternativt för calculate-by-code endpoint
+// Alternative for calculate-by-code endpoint
 export interface TaxCalculationByCodeParams {
   municipalityCode: string;     // Required, e.g. "2480"
   grossSalary: number;          // Required, positive
@@ -59,27 +59,27 @@ export interface TaxCalculationByCodeParams {
 }
 
 export interface TaxCalculationResponse {
-  // Identifiering
+  // Identification
   municipalityId: string;
   municipalityName: string;
   regionName: string;
   
-  // Inkomst
+  // Income
   grossMonthlySalary: number;
   grossYearlySalary: number;
   
-  // Skattesatser (decimal, t.ex. 0.228 = 22.8%)
+  // Tax rates (decimal, e.g. 0.228 = 22.8%)
   municipalTaxRate: number;
   regionalTaxRate: number;
   stateTaxRate: number;
   burialFeeRate: number;
   churchFeeRate: number;
   
-  // Avdrag (årsvärden)
+  // Deductions (yearly values)
   yearlyBasicDeduction: number;
   yearlyJobTaxCredit: number;
   
-  // Beräknade skatter (årsvärden)
+  // Calculated taxes (yearly values)
   yearlyTaxableIncome: number;
   yearlyMunicipalTax: number;
   yearlyRegionalTax: number;
@@ -88,11 +88,11 @@ export interface TaxCalculationResponse {
   yearlyChurchFee: number;
   yearlyTotalTax: number;
   
-  // Månadsvärden
+  // Monthly values
   monthlyTotalTax: number;
   netMonthlySalary: number;
   
-  // Summering
+  // Summary
   effectiveTaxRate: number;
 }
 
@@ -101,7 +101,7 @@ export interface ApiError {
   status: number;
   error: string;
   message?: string;
-  messages?: string[];  // Valideringsfel
+  messages?: string[];  // Validation errors
 }
 ```
 
@@ -136,20 +136,20 @@ export const municipalityService = {
 ```typescript
 // src/services/taxService.ts
 export const taxService = {
-  // Beräkna med UUID (POST)
+  // Calculate with UUID (POST)
   calculate: (request: TaxCalculationRequest) => 
     api.post<TaxCalculationResponse>('/tax/calculate', request),
   
-  // Beräkna med kommunkod (GET) - enklare för snabblänkar
+  // Calculate with municipality code (GET) - simpler for quick links
   calculateByCode: (params: TaxCalculationByCodeParams) => 
     api.get<TaxCalculationResponse>('/tax/calculate-by-code', { params }),
 };
 ```
 
-### Exempel: calculate-by-code
+### Example: calculate-by-code
 
 ```typescript
-// Enkel beräkning med kommunkod
+// Simple calculation with municipality code
 const result = await taxService.calculateByCode({
   municipalityCode: '2480',  // Umeå
   grossSalary: 37500,
@@ -167,7 +167,7 @@ console.log(result.data.monthlyTotalTax);   // 8249.88
 
 ### useMunicipalities
 
-Hanterar region → kommun-filtrering.
+Handles region → municipality filtering.
 
 ```typescript
 // src/composables/useMunicipalities.ts
@@ -178,13 +178,13 @@ export function useMunicipalities() {
   const selectedMunicipalityId = ref<string | null>(null);
   const loading = ref(false);
 
-  // Ladda regioner vid mount
+  // Load regions on mount
   onMounted(async () => {
     const { data } = await municipalityService.getRegions();
     regions.value = data.sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   });
 
-  // När region ändras → ladda kommuner
+  // When region changes → load municipalities
   watch(selectedRegionId, async (regionId) => {
     if (!regionId) {
       municipalities.value = [];
@@ -204,7 +204,7 @@ export function useMunicipalities() {
 
 ### useTaxCalculator
 
-Hanterar beräkning och resultat.
+Handles calculation and results.
 
 ```typescript
 // src/composables/useTaxCalculator.ts
@@ -220,7 +220,7 @@ export function useTaxCalculator() {
       const { data } = await taxService.calculate(request);
       result.value = data;
     } catch (err: any) {
-      error.value = err.response?.data?.message || 'Kunde inte beräkna';
+      error.value = err.response?.data?.message || 'Could not calculate';
     } finally {
       loading.value = false;
     }
@@ -241,10 +241,10 @@ export function useTaxCalculator() {
 │  ┌─────────────────────────────────────────────────┐    │
 │  │              TaxInputForm                        │    │
 │  │  • Dropdown: Region                             │    │
-│  │  • Dropdown: Kommun (filtreras på region)       │    │
-│  │  • InputNumber: Bruttolön                       │    │
-│  │  • Checkbox: Kyrkomedlem, Pensionär             │    │
-│  │  • Button: Beräkna                              │    │
+│  │  • Dropdown: Municipality (filtered by region)  │    │
+│  │  • InputNumber: Gross salary                    │    │
+│  │  • Checkbox: Church member, Pensioner           │    │
+│  │  • Button: Calculate                            │    │
 │  └─────────────────────────────────────────────────┘    │
 │                                                         │
 │  ┌──────────────────────┐  ┌──────────────────────┐    │
@@ -258,24 +258,24 @@ export function useTaxCalculator() {
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `loading` | `boolean` | Disable button under beräkning |
+| `loading` | `boolean` | Disable button during calculation |
 
 | Emit | Payload | Description |
 |------|---------|-------------|
-| `submit` | `TaxCalculationRequest` | Formulärdata vid submit |
+| `submit` | `TaxCalculationRequest` | Form data on submit |
 
 ### TaxResultCard
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `result` | `TaxCalculationResponse` | Beräkningsresultat |
-| `period` | `'monthly' \| 'yearly'` | Visar månads- eller årsvärden |
+| `result` | `TaxCalculationResponse` | Calculation result |
+| `period` | `'monthly' \| 'yearly'` | Shows monthly or yearly values |
 
-**Beräkningslogik för period:**
+**Calculation logic for period:**
 ```typescript
 const divisor = period === 'monthly' ? 12 : 1;
 
-// Direkt från API
+// Directly from API
 const netSalary = period === 'monthly' 
   ? result.netMonthlySalary 
   : result.grossYearlySalary - result.yearlyTotalTax;
@@ -288,7 +288,7 @@ const totalTax = period === 'monthly'
   ? result.monthlyTotalTax
   : result.yearlyTotalTax;
 
-// Övriga årsfält divideras för månadsvisning
+// Other yearly fields divided for monthly display
 const municipalTax = result.yearlyMunicipalTax / divisor;
 const regionalTax = result.yearlyRegionalTax / divisor;
 const stateTax = result.yearlyStateTax / divisor;
@@ -300,55 +300,55 @@ const jobTaxCredit = result.yearlyJobTaxCredit / divisor;
 
 ---
 
-## Detaljvy - Beräkningsflöde
+## Detail View - Calculation Flow
 
-Visa i expanderbar sektion ("Visa detaljer"):
+Display in expandable section ("Show details"):
 
-| Sektion | Fält | API-fält | Formel |
-|---------|------|----------|--------|
-| **Inkomst** | Bruttolön | `grossYearlySalary` | |
-| | Grundavdrag | `yearlyBasicDeduction` | SKV 433 §6.1 |
-| | Beskattningsbar inkomst | `yearlyTaxableIncome` | brutto - grundavdrag |
-| **Skatter** | Kommunalskatt | `yearlyMunicipalTax` | BFI × `municipalTaxRate` |
-| | Regionskatt | `yearlyRegionalTax` | BFI × `regionalTaxRate` |
-| | Statlig skatt | `yearlyStateTax` | 20% över 643 000 kr |
-| **Avgifter** | Begravningsavgift | `yearlyBurialFee` | BFI × `burialFeeRate` |
-| | Kyrkoavgift | `yearlyChurchFee` | 0 om ej medlem |
-| **Reduktioner** | Jobbskatteavdrag | `yearlyJobTaxCredit` | SKV 433 §7.5.2 |
-| **Resultat** | Total skatt | `yearlyTotalTax` | |
-| | Månadsskatt | `monthlyTotalTax` | total / 12 |
-| | **Nettolön** | `netMonthlySalary` | brutto - månadsskatt |
-| | Effektiv skattesats | `effectiveTaxRate` | total / brutto |
+| Section | Field | API Field | Formula |
+|---------|-------|-----------|--------|
+| **Income** | Gross salary | `grossYearlySalary` | |
+| | Basic deduction | `yearlyBasicDeduction` | SKV 433 §6.1 |
+| | Taxable income | `yearlyTaxableIncome` | gross - basic deduction |
+| **Taxes** | Municipal tax | `yearlyMunicipalTax` | TI × `municipalTaxRate` |
+| | Regional tax | `yearlyRegionalTax` | TI × `regionalTaxRate` |
+| | State tax | `yearlyStateTax` | 20% above 643,000 SEK |
+| **Fees** | Burial fee | `yearlyBurialFee` | TI × `burialFeeRate` |
+| | Church fee | `yearlyChurchFee` | 0 if not member |
+| **Reductions** | Job tax credit | `yearlyJobTaxCredit` | SKV 433 §7.5.2 |
+| **Result** | Total tax | `yearlyTotalTax` | |
+| | Monthly tax | `monthlyTotalTax` | total / 12 |
+| | **Net salary** | `netMonthlySalary` | gross - monthly tax |
+| | Effective tax rate | `effectiveTaxRate` | total / gross |
 
-> **SKV 433**: Beräkningarna följer Skatteverkets tekniska beskrivning för skattetabeller 2026.
-> Inkluderar allmän pensionsavgift (7%), skattereduktioner och public service-avgift.
+> **SKV 433**: Calculations follow the Swedish Tax Agency's technical description for tax tables 2026.
+> Includes general pension contribution (7%), tax reductions, and public service fee.
 
 ---
 
 ## PrimeVue Components
 
-Rekommenderade komponenter:
+Recommended components:
 
-| Fält | PrimeVue Component |
-|------|-------------------|
-| Region/Kommun | `Dropdown` med `filter` |
-| Bruttolön | `InputNumber` med `currency="SEK"` |
-| Checkboxar | `Checkbox` |
-| Beräkna-knapp | `Button` |
-| Resultat-kort | `Card` |
-| Detaljer | `Accordion` eller `Panel` |
-| Tabell | `DataTable` (readonly) |
+| Field | PrimeVue Component |
+|-------|-------------------|
+| Region/Municipality | `Dropdown` with `filter` |
+| Gross salary | `InputNumber` with `currency="SEK"` |
+| Checkboxes | `Checkbox` |
+| Calculate button | `Button` |
+| Result card | `Card` |
+| Details | `Accordion` or `Panel` |
+| Table | `DataTable` (readonly) |
 
 ---
 
 ## CORS (Backend)
 
-CORS är konfigurerat i API Gateway på port 8080. Frontend-applikationer på följande origins tillåts:
+CORS is configured in the API Gateway on port 8080. Frontend applications on the following origins are allowed:
 
 - `http://localhost:5173` (Vite dev server)
-- `http://localhost:3000` (alternativ dev port)
+- `http://localhost:3000` (alternative dev port)
 
-> **Notera**: Anropa alltid API:et via port 8080 (API Gateway), aldrig direkt mot backend på port 8181.
+> **Note**: Always call the API via port 8080 (API Gateway), never directly to backend on port 8181.
 
 ---
 
@@ -362,23 +362,23 @@ VITE_API_BASE_URL=http://localhost:8080/api/v1
 VITE_API_BASE_URL=https://api.example.com/api/v1
 ```
 
-> ⚠️ **Viktigt**: Använd alltid API Gateway URL, inte direkt backend-URL.
+> ⚠️ **Important**: Always use the API Gateway URL, not the direct backend URL.
 
 ---
 
 ## Error Handling
 
-| Status | Hantering |
-|--------|-----------|
-| `200` | Visa resultat |
-| `400` | Visa `messages[]` array (valideringsfel) |
-| `404` | "Kommun hittades inte" |
-| `500` | Generiskt felmeddelande |
-| Network | "Kunde inte ansluta till servern" |
+| Status | Handling |
+|--------|----------|
+| `200` | Display result |
+| `400` | Display `messages[]` array (validation errors) |
+| `404` | "Municipality not found" |
+| `500` | Generic error message |
+| Network | "Could not connect to the server" |
 
 ---
 
-## Exempel: Komplett API-svar
+## Example: Complete API Response
 
 ```json
 {
@@ -409,7 +409,7 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
 
 ---
 
-## Formatering för visning
+## Display Formatting
 
 ```typescript
 // src/utils/formatters.ts
@@ -431,9 +431,7 @@ export const formatPercent = (value: number): string => {
   }).format(value);
 };
 
-// Exempel:
+// Examples:
 // formatCurrency(29250.12)  → "29 250 kr"
 // formatPercent(0.228)      → "22,8 %"
 ```
-
-*Last Updated: 2025-12-30*

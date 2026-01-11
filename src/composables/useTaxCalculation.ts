@@ -9,15 +9,22 @@ export function useTaxCalculation() {
   const error = ref<string | null>(null)
 
   const calculateSingle = async (request: TaxRequest): Promise<TaxResult> => {
-    const response = await fetch(apiConfig.endpoints.taxCalculate, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request)
+    // Build query parameters for GET request
+    const params = new URLSearchParams({
+      municipalityId: request.municipalityId,
+      grossSalary: request.grossMonthlySalary.toString(),
+      churchMember: (request.churchMember ?? false).toString(),
+      isPensioner: (request.isPensioner ?? false).toString()
+    })
+
+    const response = await fetch(`${apiConfig.endpoints.taxCalculate}?${params}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
     })
 
     if (!response.ok) {
       const err = await response.json()
-      throw new Error(err.messages?.join(', ') || 'Calculation failed')
+      throw new Error(err.messages?.join(', ') || err.message || 'Calculation failed')
     }
 
     return response.json()

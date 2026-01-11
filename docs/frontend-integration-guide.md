@@ -14,8 +14,9 @@
 | `GET` | `/api/v1/regions` | All regions (21 total) |
 | `GET` | `/api/v1/municipalities` | All municipalities (290 total) |
 | `GET` | `/api/v1/municipalities/by-region/{regionId}` | Municipalities in selected region |
-| `POST` | `/api/v1/tax/calculate` | Calculate net salary (with UUID) |
+| `GET` | `/api/v1/tax/calculate` | Calculate net salary (with UUID as query param) |
 | `GET` | `/api/v1/tax/calculate-by-code` | Calculate net salary (with municipality code) |
+| `POST` | `/api/v1/tax/calculate` | Calculate net salary (with JSON body) |
 
 **Base URL**: `http://localhost:8080/api/v1`
 
@@ -47,8 +48,13 @@ export interface TaxCalculationRequest {
   municipalityId: string;       // Required (UUID)
   grossMonthlySalary: number;   // Required, positive
   churchMember?: boolean;       // Default: false
-  isPensioner?: boolean;        // Default: false
+  isPensioner?: boolean;        // Default: false (affects job tax credit)
 }
+
+// NOTE: When isPensioner = true:
+// - yearlyJobTaxCredit will be 0 (pensioners do not receive job tax credit)
+// - Job tax credit (jobbskatteavdrag) only applies to earned income, not pension income
+// - See SKV 433 §7.5 for details
 
 // Alternative for calculate-by-code endpoint
 export interface TaxCalculationByCodeParams {
@@ -136,8 +142,16 @@ export const municipalityService = {
 ```typescript
 // src/services/taxService.ts
 export const taxService = {
-  // Calculate with UUID (POST)
-  calculate: (request: TaxCalculationRequest) => 
+  // Calculate with UUID (GET) - query parameters
+  calculate: (params: {
+    municipalityId: string;
+    grossSalary: number;
+    churchMember?: boolean;
+    isPensioner?: boolean;
+  }) => api.get<TaxCalculationResponse>('/tax/calculate', { params }),
+  
+  // Calculate with UUID (POST) - JSON body
+  calculatePost: (request: TaxCalculationRequest) => 
     api.post<TaxCalculationResponse>('/tax/calculate', request),
   
   // Calculate with municipality code (GET) - simpler for quick links
@@ -146,19 +160,19 @@ export const taxService = {
 };
 ```
 
-### Example: calculate-by-code
+### Example: GET /tax/calculate (recommended)
 
 ```typescript
-// Simple calculation with municipality code
-const result = await taxService.calculateByCode({
-  municipalityCode: '2480',  // Umeå
-  grossSalary: 37500,
+// Calculate with UUID as query parameter
+const result = await taxService.calculate({
+  municipalityId: 'bc208ea4-81dc-4ddb-be51-321e2ffc0f35',  // Umeå UUID
+  grossSalary: 35000,
   churchMember: false,
-  isPensioner: false
+  isPensioner: true  // ⚠️ IMPORTANT: Set to true for pensioners
 });
 
-console.log(result.data.netMonthlySalary);  // 29250.12
-console.log(result.data.monthlyTotalTax);   // 8249.88
+console.log(result.data.yearlyJobTaxCredit);  // 0 (pensioners get no job tax credit)
+console.log(result.data.netMonthlySalary);    // ~30706
 ```
 
 ---
@@ -314,11 +328,13 @@ Display in expandable section ("Show details"):
 | | State tax | `yearlyStateTax` | 20% above 643,000 SEK |
 | **Fees** | Burial fee | `yearlyBurialFee` | TI × `burialFeeRate` |
 | | Church fee | `yearlyChurchFee` | 0 if not member |
-| **Reductions** | Job tax credit | `yearlyJobTaxCredit` | SKV 433 §7.5.2 |
+| **Reductions** | Job tax credit | `yearlyJobTaxCredit` | SKV 433 §7.5.2 ¹ |
 | **Result** | Total tax | `yearlyTotalTax` | |
 | | Monthly tax | `monthlyTotalTax` | total / 12 |
 | | **Net salary** | `netMonthlySalary` | gross - monthly tax |
 | | Effective tax rate | `effectiveTaxRate` | total / gross |
+
+> ¹ **Note**: Job tax credit (jobbskatteavdrag) is **0 for pensioners**. This credit only applies to earned income (arbetsinkomst), not pension income. When `isPensioner = true`, the API returns `yearlyJobTaxCredit: 0`.
 
 > **SKV 433**: Calculations follow the Swedish Tax Agency's technical description for tax tables 2026.
 > Includes general pension contribution (7%), tax reductions, and public service fee.
@@ -380,6 +396,8 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
 
 ## Example: Complete API Response
 
+### Non-pensioner (35,000 SEK/month, Umeå)
+
 ```json
 {
   "municipalityId": "bc208ea4-81dc-4ddb-be51-321e2ffc0f35",
@@ -406,6 +424,37 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
   "effectiveTaxRate": 0.22
 }
 ```
+
+### Pensioner (35,000 SEK/month, Umeå)
+
+```json
+{
+  "municipalityId": "bc208ea4-81dc-4ddb-be51-321e2ffc0f35",
+  "municipalityName": "UMEÅ",
+  "regionName": "Västerbottens län",
+  "grossMonthlySalary": 35000,
+  "grossYearlySalary": 420000,
+  "municipalTaxRate": 0.228,
+  "regionalTaxRate": 0.1185,
+  "stateTaxRate": 0.2,
+  "burialFeeRate": 0.00292,
+  "churchFeeRate": 0,
+  "yearlyBasicDeduction": 165000,
+  "yearlyJobTaxCredit": 0,
+  "yearlyTaxableIncome": 255000,
+  "yearlyMunicipalTax": 58140,
+  "yearlyRegionalTax": 30218,
+  "yearlyStateTax": 0,
+  "yearlyBurialFee": 744,
+  "yearlyChurchFee": 0,
+  "yearlyTotalTax": 51532,
+  "monthlyTotalTax": 4294,
+  "netMonthlySalary": 30706,
+  "effectiveTaxRate": 0.1227
+}
+```
+
+> **Note**: Pensioners receive a higher basic deduction but **no job tax credit** (jobbskatteavdrag), as this credit only applies to earned income.
 
 ---
 

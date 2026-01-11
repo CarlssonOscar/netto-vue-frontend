@@ -177,7 +177,7 @@ sequenceDiagram
     participant Backend as Tax Service
     
     User->>Form: Enter salary, select municipality
-    User->>Form: Click "Beräkna nettolön"
+    User->>Form: Click "Beräkna nettoinkomst"
     Form->>Calc: emit('submit', request)
     Calc->>Composable: calculate(request)
     Composable->>API: POST /tax/calculate
@@ -200,7 +200,7 @@ sequenceDiagram
     participant API as API Gateway
     
     User->>Form: Select two municipalities
-    User->>Form: Click "Beräkna nettolön"
+    User->>Form: Click "Beräkna nettoinkomst"
     Form->>Composable: calculate(request1, request2)
     
     par Parallel API calls
@@ -277,7 +277,7 @@ erDiagram
 | **Region (Län)** | Sweden has 21 regions. Used for filtering municipalities |
 | **Municipality (Kommun)** | Sweden has 290 municipalities, each with unique tax rates |
 | **Gross Salary (Bruttolön)** | Salary before taxes and deductions |
-| **Net Salary (Nettolön)** | Money received after all taxes |
+| **Net Salary (Nettoinkomst)** | Money received after all taxes |
 | **Municipal Tax (Kommunalskatt)** | Tax paid to the municipality (~20-24%) |
 | **Regional Tax (Regionskatt)** | Tax paid to the region (~10-12%) |
 | **State Tax (Statlig skatt)** | Additional 20% tax on income above 643,000 kr/year |

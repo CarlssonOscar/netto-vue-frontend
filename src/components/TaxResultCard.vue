@@ -33,7 +33,7 @@ const getGrossSalary = () => {
     <template #content>
       <div class="result-content">
         <div class="result-highlight">
-          <span>Nettolön</span>
+          <span>Nettoinkomst</span>
           <span class="highlight-value">{{ formatCurrency(getNetSalary()) }} kr</span>
         </div>
         <div class="result-row">
@@ -64,7 +64,7 @@ const getGrossSalary = () => {
           <span>Grundavdrag</span>
           <span>{{ formatCurrency(result.yearlyBasicDeduction) }} kr</span>
         </div>
-        <div class="result-row">
+        <div v-if="result.yearlyJobTaxCredit > 0" class="result-row">
           <span>Jobbskatteavdrag</span>
           <span class="addition"><span class="sign">+</span>{{ formatCurrency(result.yearlyJobTaxCredit / divisor) }} kr</span>
         </div>

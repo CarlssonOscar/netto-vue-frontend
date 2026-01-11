@@ -24,7 +24,7 @@ const getSign = (diff: number) => diff >= 0 ? '+' : '−'
     <template #content>
       <div class="result-content">
         <div class="result-highlight">
-          <span>Nettolön</span>
+          <span>Nettoinkomst</span>
           <span class="highlight-value">
             <span class="sign">{{ getSign(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary)) }}</span>{{ formatCurrency(Math.abs(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary))) }} kr
           </span>

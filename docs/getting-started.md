@@ -142,7 +142,7 @@ The application communicates with a Spring Boot backend via API Gateway on port 
 | `GET` | `/api/v1/regions` | Fetch all regions |
 | `GET` | `/api/v1/municipalities` | Fetch all municipalities |
 | `GET` | `/api/v1/municipalities/by-region/{id}` | Municipalities by region |
-| `POST` | `/api/v1/tax/calculate` | Calculate net salary |
+| `POST` | `/api/v1/tax/calculate` | Calculate net income |
 
 ### Backend Requirements
 

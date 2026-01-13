@@ -13,16 +13,16 @@ const props = defineProps<{
 // Divisor for converting yearly values to monthly
 const divisor = props.yearly ? 1 : 12
 
-// Calculate net salary based on period
-const getNetSalary = () => {
+// Calculate net income based on period
+const getNetIncome = () => {
   if (props.yearly) {
     return props.result.grossYearlySalary - props.result.yearlyTotalTax
   }
   return props.result.netMonthlySalary
 }
 
-// Get gross salary based on period
-const getGrossSalary = () => {
+// Get gross income based on period
+const getGrossIncome = () => {
   return props.yearly ? props.result.grossYearlySalary : props.result.grossMonthlySalary
 }
 </script>
@@ -34,11 +34,11 @@ const getGrossSalary = () => {
       <div class="result-content">
         <div class="result-highlight">
           <span>Nettoinkomst</span>
-          <span class="highlight-value">{{ formatCurrency(getNetSalary()) }} kr</span>
+          <span class="highlight-value">{{ formatCurrency(getNetIncome()) }} kr</span>
         </div>
         <div class="result-row">
-          <span>Bruttolön</span>
-          <span>{{ formatCurrency(getGrossSalary()) }} kr</span>
+          <span>Bruttoinkomst</span>
+          <span>{{ formatCurrency(getGrossIncome()) }} kr</span>
         </div>
         <div class="result-row">
           <span>Kommunalskatt ({{ formatPercent(result.municipalTaxRate * 100) }}%)</span>

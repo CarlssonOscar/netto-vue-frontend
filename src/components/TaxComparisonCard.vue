@@ -9,9 +9,9 @@ const props = defineProps<{
   compareResult: TaxResult
 }>()
 
-// For net salary: positive diff is good (green)
+// For net income: positive diff is good (green)
 // For taxes: negative diff is good (green, means paying less)
-const getNetSalaryClass = (diff: number) => diff >= 0 ? 'diff-positive' : 'diff-negative'
+const getNetIncomeClass = (diff: number) => diff >= 0 ? 'diff-positive' : 'diff-negative'
 const getTaxClass = (diff: number) => diff <= 0 ? 'diff-positive' : 'diff-negative'
 
 // Get sign character for a diff value
@@ -56,7 +56,7 @@ const getSign = (diff: number) => diff >= 0 ? '+' : '−'
         </div>
         <div class="result-row yearly-note">
           <span>Skillnad per år</span>
-          <span :class="getNetSalaryClass(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary))">
+          <span :class="getNetIncomeClass(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary))">
             <span class="sign">{{ getSign(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary) * 12) }}</span>{{ formatCurrency(Math.abs(getDiff(primaryResult.netMonthlySalary, compareResult.netMonthlySalary) * 12)) }} kr
           </span>
         </div>

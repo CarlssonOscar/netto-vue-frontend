@@ -14,9 +14,9 @@
 | `GET` | `/api/v1/regions` | All regions (21 total) |
 | `GET` | `/api/v1/municipalities` | All municipalities (290 total) |
 | `GET` | `/api/v1/municipalities/by-region/{regionId}` | Municipalities in selected region |
-| `GET` | `/api/v1/tax/calculate` | Calculate net salary (with UUID as query param) |
-| `GET` | `/api/v1/tax/calculate-by-code` | Calculate net salary (with municipality code) |
-| `POST` | `/api/v1/tax/calculate` | Calculate net salary (with JSON body) |
+| `GET` | `/api/v1/tax/calculate` | Calculate net income (with UUID as query param) |
+| `GET` | `/api/v1/tax/calculate-by-code` | Calculate net income (with municipality code) |
+| `POST` | `/api/v1/tax/calculate` | Calculate net income (with JSON body) |
 
 **Base URL**: `http://localhost:8080/api/v1`
 
@@ -46,7 +46,7 @@ export interface Municipality {
 
 export interface TaxCalculationRequest {
   municipalityId: string;       // Required (UUID)
-  grossMonthlySalary: number;   // Required, positive
+  grossMonthlyIncome: number;   // Required, positive
   churchMember?: boolean;       // Default: false
   isPensioner?: boolean;        // Default: false (affects job tax credit)
 }
@@ -59,7 +59,7 @@ export interface TaxCalculationRequest {
 // Alternative for calculate-by-code endpoint
 export interface TaxCalculationByCodeParams {
   municipalityCode: string;     // Required, e.g. "2480"
-  grossSalary: number;          // Required, positive
+  grossIncome: number;          // Required, positive
   churchMember?: boolean;       // Default: false
   isPensioner?: boolean;        // Default: false
 }
@@ -71,8 +71,8 @@ export interface TaxCalculationResponse {
   regionName: string;
   
   // Income
-  grossMonthlySalary: number;
-  grossYearlySalary: number;
+  grossMonthlyIncome: number;
+  grossYearlyIncome: number;
   
   // Tax rates (decimal, e.g. 0.228 = 22.8%)
   municipalTaxRate: number;
@@ -96,7 +96,7 @@ export interface TaxCalculationResponse {
   
   // Monthly values
   monthlyTotalTax: number;
-  netMonthlySalary: number;
+  netMonthlyIncome: number;
   
   // Summary
   effectiveTaxRate: number;
@@ -145,7 +145,7 @@ export const taxService = {
   // Calculate with UUID (GET) - query parameters
   calculate: (params: {
     municipalityId: string;
-    grossSalary: number;
+    grossIncome: number;
     churchMember?: boolean;
     isPensioner?: boolean;
   }) => api.get<TaxCalculationResponse>('/tax/calculate', { params }),
@@ -166,13 +166,13 @@ export const taxService = {
 // Calculate with UUID as query parameter
 const result = await taxService.calculate({
   municipalityId: 'bc208ea4-81dc-4ddb-be51-321e2ffc0f35',  // Umeå UUID
-  grossSalary: 35000,
+  grossIncome: 35000,
   churchMember: false,
   isPensioner: true  // ⚠️ IMPORTANT: Set to true for pensioners
 });
 
 console.log(result.data.yearlyJobTaxCredit);  // 0 (pensioners get no job tax credit)
-console.log(result.data.netMonthlySalary);    // ~30706
+console.log(result.data.netMonthlyIncome);    // ~30706
 ```
 
 ---
@@ -256,7 +256,7 @@ export function useTaxCalculator() {
 │  │              TaxInputForm                        │    │
 │  │  • Dropdown: Region                             │    │
 │  │  • Dropdown: Municipality (filtered by region)  │    │
-│  │  • InputNumber: Gross salary                    │    │
+│  │  • InputNumber: Gross income                   │    │
 │  │  • Checkbox: Church member, Pensioner           │    │
 │  │  • Button: Calculate                            │    │
 │  └─────────────────────────────────────────────────┘    │
@@ -290,13 +290,13 @@ export function useTaxCalculator() {
 const divisor = period === 'monthly' ? 12 : 1;
 
 // Directly from API
-const netSalary = period === 'monthly' 
-  ? result.netMonthlySalary 
-  : result.grossYearlySalary - result.yearlyTotalTax;
+const netIncome = period === 'monthly' 
+  ? result.netMonthlyIncome 
+  : result.grossYearlyIncome - result.yearlyTotalTax;
 
-const grossSalary = period === 'monthly' 
-  ? result.grossMonthlySalary 
-  : result.grossYearlySalary;
+const grossIncome = period === 'monthly' 
+  ? result.grossMonthlyIncome 
+  : result.grossYearlyIncome;
 
 const totalTax = period === 'monthly'
   ? result.monthlyTotalTax
@@ -320,7 +320,7 @@ Display in expandable section ("Show details"):
 
 | Section | Field | API Field | Formula |
 |---------|-------|-----------|--------|
-| **Income** | Gross salary | `grossYearlySalary` | |
+| **Income** | Gross income | `grossYearlyIncome` | |
 | | Basic deduction | `yearlyBasicDeduction` | SKV 433 §6.1 |
 | | Taxable income | `yearlyTaxableIncome` | gross - basic deduction |
 | **Taxes** | Municipal tax | `yearlyMunicipalTax` | TI × `municipalTaxRate` |
@@ -331,7 +331,7 @@ Display in expandable section ("Show details"):
 | **Reductions** | Job tax credit | `yearlyJobTaxCredit` | SKV 433 §7.5.2 ¹ |
 | **Result** | Total tax | `yearlyTotalTax` | |
 | | Monthly tax | `monthlyTotalTax` | total / 12 |
-| | **Net salary** | `netMonthlySalary` | gross - monthly tax |
+| | **Net income** | `netMonthlyIncome` | gross - monthly tax |
 | | Effective tax rate | `effectiveTaxRate` | total / gross |
 
 > ¹ **Note**: Job tax credit (jobbskatteavdrag) is **0 for pensioners**. This credit only applies to earned income (arbetsinkomst), not pension income. When `isPensioner = true`, the API returns `yearlyJobTaxCredit: 0`.
@@ -348,7 +348,7 @@ Recommended components:
 | Field | PrimeVue Component |
 |-------|-------------------|
 | Region/Municipality | `Dropdown` with `filter` |
-| Gross salary | `InputNumber` with `currency="SEK"` |
+| Gross income | `InputNumber` with `currency="SEK"` |
 | Checkboxes | `Checkbox` |
 | Calculate button | `Button` |
 | Result card | `Card` |
@@ -403,8 +403,8 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
   "municipalityId": "bc208ea4-81dc-4ddb-be51-321e2ffc0f35",
   "municipalityName": "UMEÅ",
   "regionName": "Västerbottens län",
-  "grossMonthlySalary": 37500,
-  "grossYearlySalary": 450000,
+  "grossMonthlyIncome": 37500,
+  "grossYearlyIncome": 450000,
   "municipalTaxRate": 0.228,
   "regionalTaxRate": 0.1185,
   "stateTaxRate": 0.2,
@@ -420,7 +420,7 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
   "yearlyChurchFee": 0,
   "yearlyTotalTax": 98998.5,
   "monthlyTotalTax": 8249.88,
-  "netMonthlySalary": 29250.12,
+  "netMonthlyIncome": 29250.12,
   "effectiveTaxRate": 0.22
 }
 ```
@@ -432,8 +432,8 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
   "municipalityId": "bc208ea4-81dc-4ddb-be51-321e2ffc0f35",
   "municipalityName": "UMEÅ",
   "regionName": "Västerbottens län",
-  "grossMonthlySalary": 35000,
-  "grossYearlySalary": 420000,
+  "grossMonthlyIncome": 35000,
+  "grossYearlyIncome": 420000,
   "municipalTaxRate": 0.228,
   "regionalTaxRate": 0.1185,
   "stateTaxRate": 0.2,
@@ -449,7 +449,7 @@ VITE_API_BASE_URL=https://api.example.com/api/v1
   "yearlyChurchFee": 0,
   "yearlyTotalTax": 51532,
   "monthlyTotalTax": 4294,
-  "netMonthlySalary": 30706,
+  "netMonthlyIncome": 30706,
   "effectiveTaxRate": 0.1227
 }
 ```

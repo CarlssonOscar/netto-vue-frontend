@@ -25,12 +25,12 @@
     // Form state
     const selectedRegionId = ref<string | null>(null)
     const municipalityId = ref('')
-    const salaryInput = ref('')
+    const incomeInput = ref('')
     const churchMember = ref(false)
     const isPensioner = ref(false)
 
-    // Format salary input with Swedish thousand separators
-    const formatSalaryInput = (event: Event) => {
+    // Format income input with Swedish thousand separators
+    const formatIncomeInput = (event: Event) => {
         const input = event.target as HTMLInputElement
         // Get cursor position before formatting
         const cursorPos = input.selectionStart || 0
@@ -42,7 +42,7 @@
         // Format with thousand separators
         if (digits) {
             const formatted = parseInt(digits, 10).toLocaleString('sv-SE')
-            salaryInput.value = formatted
+            incomeInput.value = formatted
 
             // Adjust cursor position after formatting
             const newLength = formatted.length
@@ -54,7 +54,7 @@
                 input.setSelectionRange(newCursorPos, newCursorPos)
             })
         } else {
-            salaryInput.value = ''
+            incomeInput.value = ''
         }
     }
 
@@ -77,7 +77,7 @@
 
     // Get the numeric value for API calls
     const grossMonthlySalary = computed(() => {
-        const digits = salaryInput.value.replace(/\D/g, '')
+        const digits = incomeInput.value.replace(/\D/g, '')
         return digits ? parseInt(digits, 10) : null
     })
 
@@ -111,7 +111,7 @@
         // Clear all form fields
         selectedRegionId.value = null
         municipalityId.value = ''
-        salaryInput.value = ''
+        incomeInput.value = ''
         churchMember.value = false
         isPensioner.value = false
         compareMode.value = false
@@ -160,15 +160,15 @@
                                     :disabled="hasResult"
                                     aria-label="Välj kommun" />
 
-                <InputText v-model="salaryInput"
-                           @input="formatSalaryInput"
+                <InputText v-model="incomeInput"
+                           @input="formatIncomeInput"
                            @keydown="handleKeydown"
-                           :placeholder="submitted && validationErrors.salary ? 'Bruttolön per månad (SEK) *' : 'Bruttolön per månad (SEK)'"
-                           class="w-full salary-input"
-                           :class="{ 'p-invalid': submitted && validationErrors.salary }"
+                           :placeholder="submitted && validationErrors.income ? 'Bruttoinkomst per månad (SEK) *' : 'Bruttoinkomst per månad (SEK)'"
+                           class="w-full income-input"
+                           :class="{ 'p-invalid': submitted && validationErrors.income }"
                            :disabled="hasResult"
                            inputmode="numeric"
-                           aria-label="Bruttolön per månad i svenska kronor" />
+                           aria-label="Bruttoinkomst per månad i svenska kronor" />
 
                 <div class="checkbox-group">
                     <div class="checkbox-item">
@@ -269,7 +269,7 @@
     }
 
         /* Underline style for inputs */
-        .form-content :deep(.p-inputtext:not(.salary-input)),
+        .form-content :deep(.p-inputtext:not(.income-input)),
         .form-content :deep(.p-select),
         .form-content :deep(.p-autocomplete-input) {
             background: transparent;
@@ -280,8 +280,8 @@
             color: #333333;
         }
 
-        /* Full border style for salary input */
-        .form-content :deep(.salary-input) {
+        /* Full border style for income input */
+        .form-content :deep(.income-input) {
             background: transparent !important;
             border: 1px solid rgba(0, 0, 0, 0.2) !important;
             border-radius: 6px !important;
@@ -289,8 +289,8 @@
             color: #333333;
         }
 
-        .form-content :deep(.salary-input:focus),
-        .form-content :deep(.salary-input:hover) {
+        .form-content :deep(.income-input:focus),
+        .form-content :deep(.income-input:hover) {
             background: transparent !important;
             box-shadow: none !important;
             outline: none !important;

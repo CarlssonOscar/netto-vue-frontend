@@ -25,6 +25,16 @@ watch(
   }
 )
 
+// Watch modelValue to reset selectedRegion when cleared externally
+watch(
+  () => modelValue.value,
+  (newValue) => {
+    if (newValue === null) {
+      selectedRegion.value = null
+    }
+  }
+)
+
 const search = (event: { query: string }) => {
   const query = event.query.toLowerCase()
   filteredSuggestions.value = store.regions.filter(r =>
@@ -43,7 +53,7 @@ const onClear = () => {
     v-model="selectedRegion"
     :suggestions="filteredSuggestions"
     optionLabel="name"
-    :placeholder="props.placeholder ?? 'Alla regioner'"
+    :placeholder="props.placeholder ?? 'Sök region...'"
     @complete="search"
     @clear="onClear"
     dropdown

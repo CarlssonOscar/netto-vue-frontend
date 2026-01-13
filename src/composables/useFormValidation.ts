@@ -9,7 +9,7 @@ interface ValidationFields {
 
 export interface ValidationErrors {
   municipality: string | null
-  salary: string | null
+  income: string | null
   compareMunicipality: string | null
 }
 
@@ -20,7 +20,7 @@ export interface ValidationErrors {
 export function useFormValidation(fields: ValidationFields) {
   const validationErrors = computed<ValidationErrors>(() => ({
     municipality: !fields.municipalityId.value ? 'Required field' : null,
-    salary: !fields.grossMonthlySalary.value || fields.grossMonthlySalary.value <= 0 
+    income: !fields.grossMonthlySalary.value || fields.grossMonthlySalary.value <= 0 
       ? 'Required field' 
       : null,
     compareMunicipality: fields.compareMode.value && !fields.compareMunicipalityId.value 

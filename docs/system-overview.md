@@ -10,20 +10,20 @@
 
 ### What is NettoFrontend?
 
-NettoFrontend is a Swedish net salary calculator that helps users understand how much money they will receive after taxes. Users enter their gross monthly salary and select a municipality to see a detailed breakdown of all tax components.
+NettoFrontend is a Swedish net income calculator that helps users understand how much money they will receive after taxes. Users enter their gross monthly income and select a municipality to see a detailed breakdown of all tax components.
 
 ### Target Users
 
-- **Swedish employees** wanting to understand their net salary
-- **Job seekers** comparing salaries across different municipalities
+- **Swedish individuals** (employees and pensioners) wanting to understand their net income
+- **Job seekers** comparing incomes across different municipalities
 - **People considering relocation** who want to compare tax rates between municipalities
 
 ### Core Features
 
-1. **Net Salary Calculation** - Calculate monthly and yearly net salary from gross salary
+1. **Net Income Calculation** - Calculate monthly and yearly net income from gross income
 2. **Municipality Selection** - Choose from all 290 Swedish municipalities
 3. **Tax Breakdown** - See municipal tax, regional tax, state tax, fees, and deductions
-4. **Compare Mode** - Compare net salary between two municipalities side-by-side
+4. **Compare Mode** - Compare net income between two municipalities side-by-side
 
 ### Business Value
 
@@ -142,7 +142,7 @@ graph TD
 | Component | Responsibility |
 |-----------|---------------|
 | `TaxCalculator` | Orchestrates form, results, and comparison. Uses `useTaxCalculation` composable |
-| `TaxCalculatorForm` | Collects user input (municipality, salary, options). Handles validation |
+| `TaxCalculatorForm` | Collects user input (municipality, income, options). Handles validation |
 | `TaxResultCard` | Displays calculation results (monthly or yearly view) |
 | `TaxComparisonCard` | Shows difference between two municipality calculations |
 | `RegionSelect` | Dropdown for filtering municipalities by region |
@@ -176,7 +176,7 @@ sequenceDiagram
     participant API as API Gateway
     participant Backend as Tax Service
     
-    User->>Form: Enter salary, select municipality
+    User->>Form: Enter income, select municipality
     User->>Form: Click "Beräkna nettoinkomst"
     Form->>Calc: emit('submit', request)
     Calc->>Composable: calculate(request)
@@ -263,8 +263,8 @@ erDiagram
     }
     
     TAX_CALCULATION {
-        decimal grossSalary
-        decimal netSalary
+        decimal grossIncome
+        decimal netIncome
         decimal totalTax
         decimal effectiveTaxRate
     }
@@ -276,8 +276,8 @@ erDiagram
 |---------|-------------|
 | **Region (Län)** | Sweden has 21 regions. Used for filtering municipalities |
 | **Municipality (Kommun)** | Sweden has 290 municipalities, each with unique tax rates |
-| **Gross Salary (Bruttolön)** | Salary before taxes and deductions |
-| **Net Salary (Nettoinkomst)** | Money received after all taxes |
+| **Gross Income (Bruttoinkomst)** | Income before taxes and deductions (employment, pension, etc.) |
+| **Net Income (Nettoinkomst)** | Money received after all taxes |
 | **Municipal Tax (Kommunalskatt)** | Tax paid to the municipality (~20-24%) |
 | **Regional Tax (Regionskatt)** | Tax paid to the region (~10-12%) |
 | **State Tax (Statlig skatt)** | Additional 20% tax on income above 643,000 kr/year |
@@ -289,12 +289,12 @@ erDiagram
 ### Tax Calculation Formula (Conceptual)
 
 ```
-Taxable Income = Gross Salary - Basic Deduction
+Taxable Income = Gross Income - Basic Deduction
 Municipal Tax = Taxable Income × Municipal Rate
 Regional Tax = Taxable Income × Regional Rate
 State Tax = (Taxable Income - Threshold) × 20%  [if applicable]
 Total Tax = Municipal + Regional + State + Fees - Job Tax Credit
-Net Salary = Gross Salary - Total Tax
+Net Income = Gross Income - Total Tax
 ```
 
 **For exact calculation rules:** Backend implements SKV 433 (Skatteverket's technical specification for 2026)
@@ -319,7 +319,7 @@ All frontend API calls go through a centralized API Gateway on port 8080.
 |----------|--------|---------|
 | `/api/v1/regions` | GET | List all 21 Swedish regions |
 | `/api/v1/municipalities` | GET | List all 290 municipalities with tax rates |
-| `/api/v1/tax/calculate` | POST | Calculate net salary for given input |
+| `/api/v1/tax/calculate` | POST | Calculate net income for given input |
 
 **For request/response formats:** See [frontend-integration-guide.md](frontend-integration-guide.md)
 
@@ -385,7 +385,7 @@ All frontend API calls go through a centralized API Gateway on port 8080.
 
 ### 5. InputText Instead of InputNumber
 
-**Decision**: Use InputText with custom formatting for salary input.
+**Decision**: Use InputText with custom formatting for income input.
 
 **Why**:
 - InputNumber component had persistent styling issues
@@ -426,8 +426,8 @@ All frontend API calls go through a centralized API Gateway on port 8080.
 
 | Swedish | English | Description |
 |---------|---------|-------------|
-| Bruttolön | Gross salary | Salary before taxes |
-| Nettolön | Net salary | Salary after taxes |
+| Bruttoinkomst | Gross income | Income before taxes (employment, pension, etc.) |
+| Nettoinkomst | Net income | Income after taxes |
 | Kommun | Municipality | Local government unit (290 in Sweden) |
 | Län / Region | Region | Regional government unit (21 in Sweden) |
 | Kommunalskatt | Municipal tax | Tax paid to municipality |
